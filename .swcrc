@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/swcrc",
+  "minify": true,
+  "jsc": {
+    "parser": {
+      "syntax": "typescript"
+    },
+    "minify": {
+      "compress": {
+        "unused": true
+      },
+      "mangle": true
+    }
+  },
+  "env": {
+    "targets": [
+      "Chrome >= 85",
+      "Edge >= 85",
+      "Safari >= 15.6",
+      "Firefox >= 79",
+      "Opera >= 71",
+      "ChromeAndroid >= 85",
+      "iOS >= 15.6",
+      "Samsung >= 14",
+      "node >= 15"
+    ]
+  },
+  "isModule": true,
+  "module": {
+    "type": "es6",
+    "noInterop": true
+  }
+}
