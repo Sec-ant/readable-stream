@@ -38,3 +38,6 @@ ReadableStream.prototype.values ??= ReadableStream.prototype[
     },
   };
 };
+
+ReadableStream.prototype[Symbol.asyncIterator] ??=
+  ReadableStream.prototype.values;
