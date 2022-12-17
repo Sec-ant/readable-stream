@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 declare global {
   interface ReadableStreamIteratorOptions {
     preventCancel?: boolean;
@@ -10,37 +11,93 @@ declare global {
 
 ReadableStream.prototype.values = ReadableStream.prototype[
   Symbol.asyncIterator
-] = function (
-  this: ReadableStream,
+] = function <R, TReturn = unknown>(
+  this: ReadableStream<R>,
   { preventCancel = false }: ReadableStreamIteratorOptions = {
     preventCancel: false,
   }
 ) {
   const reader = this.getReader();
-  let ongoingPromise: Promise<ReadableStreamReadResult<unknown>>;
+  let isReleased = false;
+  let isFinished = false;
+  let ongoingPromise:
+    | Promise<
+        ReadableStreamReadResult<R> | ReadableStreamReadDoneResult<TReturn>
+      >
+    | undefined = undefined;
   return {
-    next() {
-      // known issue: https://github.com/microsoft/TypeScript/issues/38479
-      return (ongoingPromise = reader.read()) as Promise<
-        IteratorResult<unknown, undefined>
-      >;
+    async next() {
+      ongoingPromise ? await ongoingPromise : undefined;
+      return (ongoingPromise = nextSteps());
     },
-    async return() {
-      await ongoingPromise;
-      if (!preventCancel) {
-        await reader.cancel();
-      }
-      reader.releaseLock();
-      // not conform to the spec?: https://streams.spec.whatwg.org/#rs-asynciterator-prototype-return
-      return {
-        done: true,
-        value: undefined,
-      };
+    async return(value?: TReturn) {
+      ongoingPromise ? await ongoingPromise : undefined;
+      return returnSteps(value);
     },
     [Symbol.asyncIterator]() {
       return this;
     },
-  };
+  } as AsyncIterableIterator<R>;
+  async function nextSteps(): Promise<ReadableStreamReadResult<R>> {
+    if (isFinished) {
+      return {
+        done: true,
+        value: undefined,
+      };
+    }
+    if (isReleased) {
+      throw new TypeError("Cannot iterate a stream using a released reader");
+    }
+    let readResult: ReadableStreamReadResult<R>;
+    try {
+      readResult = await reader.read();
+    } catch (e) {
+      ongoingPromise = undefined;
+      isFinished = true;
+      reader.releaseLock();
+      isReleased = true;
+      throw e;
+    }
+    if (readResult.done) {
+      ongoingPromise = undefined;
+      isFinished = true;
+      reader.releaseLock();
+      isReleased = true;
+    }
+    return readResult;
+  }
+  async function returnSteps(
+    value?: TReturn
+  ): Promise<ReadableStreamReadDoneResult<TReturn>> {
+    if (isFinished) {
+      return {
+        done: true,
+        value,
+      };
+    }
+    isFinished = true;
+    if (isReleased) {
+      throw new TypeError(
+        "Cannot finish iterating a stream using a released reader"
+      );
+    }
+    if (!preventCancel) {
+      const result = reader.cancel(value);
+      reader.releaseLock();
+      isReleased = true;
+      await result;
+      return {
+        done: true,
+        value,
+      };
+    }
+    reader.releaseLock();
+    isReleased = true;
+    return {
+      done: true,
+      value,
+    };
+  }
 };
 
 ReadableStream.prototype[Symbol.asyncIterator] ??=
