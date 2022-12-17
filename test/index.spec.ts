@@ -126,7 +126,6 @@ test("Async iterator instances should have the correct list of properties", asyn
     AsyncIteratorPrototype,
     "prototype should extend AsyncIteratorPrototype"
   );
-
   const methods = ["next", "return"].sort();
   assert.deepEqual(
     Object.getOwnPropertyNames(proto).sort(),
@@ -502,7 +501,7 @@ test("next() that succeeds; next() that reports an error; next()", async () => {
   assertIterResult(iterResult3, undefined, true, "3rd next()");
 });
 
-test("next() that succeeds; next() that reports an error(); next() [no awaiting]", async () => {
+test("next() that succeeds; next() that reports an error; next() [no awaiting]", async () => {
   let timesPulled = 0;
   const s = new ReadableStream({
     pull(c) {
@@ -522,6 +521,8 @@ test("next() that succeeds; next() that reports an error(); next() [no awaiting]
     it.next(),
     it.next(),
   ]);
+
+  console.log(iterResults);
 
   assert.strictEqual(
     iterResults[0].status,
@@ -561,7 +562,7 @@ test("next() that succeeds; next() that reports an error(); next() [no awaiting]
   );
 });
 
-test("next() that succeeds; next() that reports an error(); return()", async () => {
+test("next() that succeeds; next() that reports an error; return()", async () => {
   let timesPulled = 0;
   const s = new ReadableStream({
     pull(c) {
@@ -595,7 +596,7 @@ test("next() that succeeds; next() that reports an error(); return()", async () 
   assertIterResult(iterResult3, "return value", true, "return()");
 });
 
-test("next() that succeeds; next() that reports an error(); return() [no awaiting]", async () => {
+test("next() that succeeds; next() that reports an error; return() [no awaiting]", async () => {
   let timesPulled = 0;
   const s = new ReadableStream({
     pull(c) {
@@ -854,7 +855,7 @@ test("Acquiring a reader after exhaustively async-iterating a stream", async () 
   await reader.closed;
 });
 
-test("Acquiring a reader after return()ing from a stream that errors", async () => {
+test("Acquiring a reader after returning from a stream that errors", async () => {
   let timesPulled = 0;
   const s = new ReadableStream({
     pull(c) {
