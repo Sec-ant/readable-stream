@@ -11,6 +11,100 @@ await setup({
   },
 });
 
+function step_timeout(
+  func: (...params: unknown[]) => unknown,
+  timeout: number,
+  ...args: unknown[]
+) {
+  return setTimeout(() => {
+    func.apply(this, args);
+  }, timeout);
+}
+
+const delay = (ms: number) =>
+  new Promise((resolve) => step_timeout(resolve, ms));
+
+const flushAsyncEvents = () =>
+  delay(0)
+    .then(() => delay(0))
+    .then(() => delay(0))
+    .then(() => delay(0));
+
+const recordingReadableStream = <R>(
+  extras: UnderlyingDefaultSource<R> = {},
+  strategy: CountQueuingStrategy
+) => {
+  interface ExposedRecords {
+    events: unknown[];
+    eventsWithoutPulls: unknown[];
+    controller: ReadableStreamDefaultController<R>;
+  }
+  let controllerToCopyOver: ReadableStreamDefaultController<R> | undefined;
+  const stream: ReadableStream<R> & ExposedRecords = new ReadableStream(
+    {
+      type: extras.type,
+      start(controller) {
+        controllerToCopyOver = controller;
+
+        if (extras.start) {
+          return extras.start(controller);
+        }
+
+        return undefined;
+      },
+      pull(controller) {
+        stream.events.push("pull");
+
+        if (extras.pull) {
+          return extras.pull(controller);
+        }
+
+        return undefined;
+      },
+      cancel(reason) {
+        stream.events.push("cancel", reason);
+        stream.eventsWithoutPulls.push("cancel", reason);
+
+        if (extras.cancel) {
+          return extras.cancel(reason);
+        }
+
+        return undefined;
+      },
+    },
+    strategy
+  ) as ReadableStream<R> & ExposedRecords;
+
+  stream.controller =
+    controllerToCopyOver as ReadableStreamDefaultController<R>;
+  stream.events = [];
+  stream.eventsWithoutPulls = [];
+
+  return stream;
+};
+
+function assertIterResult<R>(
+  iterResult: IteratorResult<R, unknown>,
+  value: R,
+  done: boolean,
+  message?: string
+) {
+  const prefix = message === undefined ? "" : `${message} `;
+  assert.equal(typeof iterResult, "object", `${prefix}type is object`);
+  assert.equal(
+    Object.getPrototypeOf(iterResult),
+    Object.prototype,
+    `${prefix}[[Prototype]]`
+  );
+  assert.deepEqual(
+    Object.getOwnPropertyNames(iterResult).sort(),
+    ["done", "value"],
+    `${prefix}property names`
+  );
+  assert.equal(iterResult.value, value, `${prefix}value`);
+  assert.equal(iterResult.done, done, `${prefix}done`);
+}
+
 test("Async iterator instances should have the correct list of properties", async () => {
   const s = new ReadableStream();
   const it = s.values();
@@ -121,4 +215,94 @@ test("Async-iterating a pull source with undefined values", async () => {
     chunks.push(chunk);
   }
   assert.deepEqual(chunks, [undefined, undefined, undefined]);
+});
+
+test("Async-iterating a pull source manually", async () => {
+  let i = 1;
+  const s = recordingReadableStream(
+    {
+      pull(c) {
+        c.enqueue(i);
+        if (i >= 3) {
+          c.close();
+        }
+        i += 1;
+      },
+    },
+    new CountQueuingStrategy({ highWaterMark: 0 })
+  );
+
+  const it = s.values();
+  assert.deepEqual(s.events, []);
+
+  const read1 = await it.next();
+  assertIterResult(read1, 1, false);
+  assert.deepEqual(s.events, ["pull"]);
+
+  const read2 = await it.next();
+  assertIterResult(read2, 2, false);
+  assert.deepEqual(s.events, ["pull", "pull"]);
+
+  const read3 = await it.next();
+  assertIterResult(read3, 3, false);
+  assert.deepEqual(s.events, ["pull", "pull", "pull"]);
+
+  const read4 = await it.next();
+  assertIterResult(read4, undefined, true);
+  assert.deepEqual(s.events, ["pull", "pull", "pull"]);
+});
+
+test("Async-iterating an errored stream throws", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.error("e");
+    },
+  });
+  let reached = false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _ of s) {
+      /* empty */
+    }
+    reached = true;
+  } catch (e) {
+    assert.isFalse(reached);
+    assert.equal(e, "e");
+  }
+});
+
+test("Async-iterating a closed stream never executes the loop body, but works fine", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.close();
+    },
+  });
+
+  let reached = false;
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  for await (const _ of s) {
+    reached = true;
+  }
+
+  assert.isFalse(reached);
+});
+
+test("Async-iterating an empty but not closed/errored stream never executes the loop body and stalls the async function", async () => {
+  const s = new ReadableStream();
+  let reached1 = false;
+  let reached2 = false;
+
+  const loop = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _ of s) {
+      reached1 = true;
+    }
+    reached2 = true;
+  };
+
+  await Promise.race([loop(), flushAsyncEvents()]);
+
+  assert.isFalse(reached1);
+  assert.isFalse(reached2);
 });
