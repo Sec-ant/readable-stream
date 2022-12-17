@@ -1,17 +1,5 @@
 import type {} from "../src/index";
-import { setup } from "vite-test-utils";
 import { test, assert } from "vitest";
-
-await setup({
-  mode: "dev",
-  browser: true,
-  browserOptions: {
-    type: "chromium",
-    launch: {
-      channel: "msedge",
-    },
-  },
-});
 
 await import("../src/index");
 
@@ -521,8 +509,6 @@ test("next() that succeeds; next() that reports an error; next() [no awaiting]",
     it.next(),
     it.next(),
   ]);
-
-  console.log(iterResults);
 
   assert.strictEqual(
     iterResults[0].status,
