@@ -18,7 +18,6 @@ ReadableStream.prototype.values = ReadableStream.prototype[
   }
 ) {
   const reader = this.getReader();
-  let isReleased = false;
   let isFinished = false;
   let ongoingPromise:
     | Promise<
@@ -45,9 +44,6 @@ ReadableStream.prototype.values = ReadableStream.prototype[
         value: undefined,
       };
     }
-    if (isReleased) {
-      throw new TypeError("Cannot iterate a stream using a released reader");
-    }
     let readResult: ReadableStreamReadResult<R>;
     try {
       readResult = await reader.read();
@@ -55,14 +51,12 @@ ReadableStream.prototype.values = ReadableStream.prototype[
       ongoingPromise = undefined;
       isFinished = true;
       reader.releaseLock();
-      isReleased = true;
       throw e;
     }
     if (readResult.done) {
       ongoingPromise = undefined;
       isFinished = true;
       reader.releaseLock();
-      isReleased = true;
     }
     return readResult;
   }
@@ -76,15 +70,9 @@ ReadableStream.prototype.values = ReadableStream.prototype[
       };
     }
     isFinished = true;
-    if (isReleased) {
-      throw new TypeError(
-        "Cannot finish iterating a stream using a released reader"
-      );
-    }
     if (!preventCancel) {
       const result = reader.cancel(value);
       reader.releaseLock();
-      isReleased = true;
       await result;
       return {
         done: true,
@@ -92,7 +80,6 @@ ReadableStream.prototype.values = ReadableStream.prototype[
       };
     }
     reader.releaseLock();
-    isReleased = true;
     return {
       done: true,
       value,

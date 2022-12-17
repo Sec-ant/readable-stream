@@ -11,9 +11,4 @@ export default defineConfig({
     },
     emptyOutDir: false,
   },
-  test: {
-    deps: {
-      inline: [/vite-test-utils/],
-    },
-  },
 });
