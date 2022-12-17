@@ -11,10 +11,12 @@ await setup({
   },
 });
 
-function step_timeout(
-  func: (...params: unknown[]) => unknown,
+const error1 = new Error("error1");
+
+function step_timeout<R>(
+  func: (...params: R[]) => unknown,
   timeout: number,
-  ...args: unknown[]
+  ...args: R[]
 ) {
   return setTimeout(() => {
     func.apply(this, args);
@@ -32,7 +34,7 @@ const flushAsyncEvents = () =>
 
 const recordingReadableStream = <R>(
   extras: UnderlyingDefaultSource<R> = {},
-  strategy: CountQueuingStrategy
+  strategy?: CountQueuingStrategy
 ) => {
   interface ExposedRecords {
     events: unknown[];
@@ -305,4 +307,156 @@ test("Async-iterating an empty but not closed/errored stream never executes the 
 
   assert.isFalse(reached1);
   assert.isFalse(reached2);
+});
+
+test("Async-iterating a partially consumed stream", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue(1);
+      c.enqueue(2);
+      c.enqueue(3);
+      c.close();
+    },
+  });
+
+  const reader = s.getReader();
+  const readResult = (await reader.read()) as IteratorResult<unknown, unknown>;
+  assertIterResult(readResult, 1, false);
+  reader.releaseLock();
+
+  const chunks: unknown[] = [];
+  for await (const chunk of s) {
+    chunks.push(chunk);
+  }
+  assert.deepEqual(chunks, [2, 3]);
+});
+
+for (const type of ["throw", "break", "return"]) {
+  for (const preventCancel of [false, true]) {
+    test(`Cancellation behavior when ${type}ing inside loop body; preventCancel = ${preventCancel}`, async () => {
+      const s = recordingReadableStream({
+        start(c) {
+          c.enqueue(0);
+        },
+      });
+
+      // use a separate function for the loop body so return does not stop the test
+      const loop = async () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of s.values({ preventCancel })) {
+          if (type === "throw") {
+            throw new Error();
+          } else if (type === "break") {
+            break;
+          } else if (type === "return") {
+            return;
+          }
+        }
+      };
+
+      try {
+        await loop();
+      } catch (e) {
+        /* empty */
+      }
+
+      if (preventCancel) {
+        assert.deepEqual(s.events, ["pull"], "cancel() should not be called");
+      } else {
+        assert.deepEqual(
+          s.events,
+          ["pull", "cancel", undefined],
+          "cancel() should be called"
+        );
+      }
+    });
+  }
+}
+
+for (const preventCancel of [false, true]) {
+  test(`Cancellation behavior when manually calling return(); preventCancel = ${preventCancel}`, async () => {
+    const s = recordingReadableStream({
+      start(c) {
+        c.enqueue(0);
+      },
+    });
+
+    const it = s.values({ preventCancel });
+    await it.return?.();
+
+    if (preventCancel) {
+      assert.deepEqual(s.events, [], "cancel() should not be called");
+    } else {
+      assert.deepEqual(
+        s.events,
+        ["cancel", undefined],
+        "cancel() should be called"
+      );
+    }
+  });
+}
+
+test("next() rejects if the stream errors", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResult1 = await it.next();
+  assertIterResult(iterResult1, 0, false, "1st next()");
+
+  try {
+    await it.next();
+  } catch (e) {
+    assert.strictEqual(error1, e, "2nd next()");
+  }
+});
+
+test("return() does not rejects if the stream has not errored yet", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResult = (await it.return?.("return value")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult, "return value", true);
+});
+
+test("return() rejects if the stream has errored", async () => {
+  const s = new ReadableStream({
+    pull(c) {
+      // Do not error in start() because doing so would prevent acquiring a reader/async iterator.
+      c.error(error1);
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  await flushAsyncEvents();
+  try {
+    await it.return?.("return value");
+  } catch (e) {
+    assert.strictEqual(e, error1);
+  }
 });
