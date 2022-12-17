@@ -1,5 +1,4 @@
-/// <reference types=".."/>
-
+import type {} from "../src/index";
 import { setup } from "vite-test-utils";
 import { test, assert } from "vitest";
 
@@ -92,8 +91,8 @@ function assertIterResult<R>(
   message?: string
 ) {
   const prefix = message === undefined ? "" : `${message} `;
-  assert.equal(typeof iterResult, "object", `${prefix}type is object`);
-  assert.equal(
+  assert.strictEqual(typeof iterResult, "object", `${prefix}type is object`);
+  assert.strictEqual(
     Object.getPrototypeOf(iterResult),
     Object.prototype,
     `${prefix}[[Prototype]]`
@@ -103,8 +102,8 @@ function assertIterResult<R>(
     ["done", "value"],
     `${prefix}property names`
   );
-  assert.equal(iterResult.value, value, `${prefix}value`);
-  assert.equal(iterResult.done, done, `${prefix}done`);
+  assert.strictEqual(iterResult.value, value, `${prefix}value`);
+  assert.strictEqual(iterResult.done, done, `${prefix}done`);
 }
 
 test("Async iterator instances should have the correct list of properties", () => {
@@ -117,7 +116,7 @@ test("Async iterator instances should have the correct list of properties", () =
       /* void */
     }).prototype
   );
-  assert.equal(
+  assert.strictEqual(
     Object.getPrototypeOf(proto),
     AsyncIteratorPrototype,
     "prototype should extend AsyncIteratorPrototype"
@@ -138,13 +137,13 @@ test("Async iterator instances should have the correct list of properties", () =
     assert.isTrue(propDesc.enumerable, "method should be enumerable");
     assert.isTrue(propDesc.configurable, "method should be configurable");
     assert.isTrue(propDesc.writable, "method should be writable");
-    assert.equal(typeof it[m], "function", "method should be a function");
-    assert.equal(it[m].name, m, "method should have the correct name");
+    assert.strictEqual(typeof it[m], "function", "method should be a function");
+    assert.strictEqual(it[m].name, m, "method should have the correct name");
   }
 
-  assert.equal(it.next.length, 0, "next should have no parameters");
-  assert.equal(it.return?.length, 1, "return should have 1 parameter");
-  assert.equal(typeof it.throw, "undefined", "throw should not exist");
+  assert.strictEqual(it.next.length, 0, "next should have no parameters");
+  assert.strictEqual(it.return?.length, 1, "return should have 1 parameter");
+  assert.strictEqual(typeof it.throw, "undefined", "throw should not exist");
 });
 
 test("Async-iterating a push source", async () => {
@@ -269,7 +268,7 @@ test("Async-iterating an errored stream throws", async () => {
     reached = true;
   } catch (e) {
     assert.isFalse(reached);
-    assert.equal(e, "e");
+    assert.strictEqual(e, "e");
   }
 });
 
@@ -414,11 +413,14 @@ test("next() rejects if the stream errors", async () => {
   const iterResult1 = await it.next();
   assertIterResult(iterResult1, 0, false, "1st next()");
 
+  let reached = false;
   try {
     await it.next();
+    reached = true;
   } catch (e) {
     assert.strictEqual(error1, e, "2nd next()");
   }
+  assert.isFalse(reached);
 });
 
 test("return() does not rejects if the stream has not errored yet", async () => {
@@ -454,9 +456,195 @@ test("return() rejects if the stream has errored", async () => {
   const it = s[Symbol.asyncIterator]();
 
   await flushAsyncEvents();
+  let reached = false;
   try {
     await it.return?.("return value");
+    reached = true;
   } catch (e) {
     assert.strictEqual(e, error1);
   }
+  assert.isFalse(reached);
+});
+
+test("next() that succeeds; next() that reports an error; next()", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResult1 = await it.next();
+  assertIterResult(iterResult1, 0, false, "1st next()");
+
+  let reached = false;
+  try {
+    await it.next();
+    reached = true;
+  } catch (e) {
+    assert.strictEqual(e, error1, "2nd next()");
+  }
+  assert.isFalse(reached);
+
+  const iterResult3 = await it.next();
+  assertIterResult(iterResult3, undefined, true, "3rd next()");
+});
+
+test("next() that succeeds; next() that reports an error(); next() [no awaiting]", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResults = await Promise.allSettled([
+    it.next(),
+    it.next(),
+    it.next(),
+  ]);
+
+  assert.strictEqual(
+    iterResults[0].status,
+    "fulfilled",
+    "1st next() promise status"
+  );
+  assertIterResult(
+    (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    0,
+    false,
+    "1st next()"
+  );
+
+  assert.strictEqual(
+    iterResults[1].status,
+    "rejected",
+    "2nd next() promise status"
+  );
+  assert.strictEqual(
+    (iterResults[1] as PromiseRejectedResult).reason,
+    error1,
+    "2nd next() rejection reason"
+  );
+
+  assert.strictEqual(
+    iterResults[2].status,
+    "fulfilled",
+    "3rd next() promise status"
+  );
+  assertIterResult(
+    (iterResults[2] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    undefined,
+    true,
+    "3rd next()"
+  );
+});
+
+test("next() that succeeds; next() that reports an error(); return()", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResult1 = await it.next();
+  assertIterResult(iterResult1, 0, false, "1st next()");
+
+  let reached = false;
+  try {
+    await it.next();
+    reached = true;
+  } catch (e) {
+    assert.strictEqual(e, error1, "2nd next()");
+  }
+  assert.isFalse(reached);
+
+  const iterResult3 = (await it.return?.("return value")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult3, "return value", true, "return()");
+});
+
+test("next() that succeeds; next() that reports an error(); return() [no awaiting]", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResults = await Promise.allSettled([
+    it.next(),
+    it.next(),
+    it.return?.("return value"),
+  ]);
+
+  assert.strictEqual(
+    iterResults[0].status,
+    "fulfilled",
+    "1st next() promise status"
+  );
+  assertIterResult(
+    (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    0,
+    false,
+    "1st next()"
+  );
+
+  assert.strictEqual(
+    iterResults[1].status,
+    "rejected",
+    "2nd next() promise status"
+  );
+  assert.strictEqual(
+    (iterResults[1] as PromiseRejectedResult).reason,
+    error1,
+    "2nd next() rejection reason"
+  );
+
+  assert.strictEqual(
+    iterResults[2].status,
+    "fulfilled",
+    "return() promise status"
+  );
+  assertIterResult(
+    (iterResults[2] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    "return value",
+    true,
+    "return()"
+  );
 });
