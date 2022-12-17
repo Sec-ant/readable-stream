@@ -105,7 +105,7 @@ function assertIterResult<R>(
   assert.equal(iterResult.done, done, `${prefix}done`);
 }
 
-test("Async iterator instances should have the correct list of properties", async () => {
+test("Async iterator instances should have the correct list of properties", () => {
   const s = new ReadableStream();
   const it = s.values();
   const proto = Object.getPrototypeOf(it);
