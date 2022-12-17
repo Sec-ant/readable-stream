@@ -8,9 +8,9 @@ declare global {
   }
 }
 
-ReadableStream.prototype.values ??= ReadableStream.prototype[
+ReadableStream.prototype.values = ReadableStream.prototype[
   Symbol.asyncIterator
-] ??= function (
+] = function (
   this: ReadableStream,
   { preventCancel = false }: ReadableStreamIteratorOptions = {
     preventCancel: false,

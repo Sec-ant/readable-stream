@@ -7,8 +7,13 @@ await setup({
   browser: true,
   browserOptions: {
     type: "chromium",
+    launch: {
+      channel: "msedge",
+    },
   },
 });
+
+await import("../src/index");
 
 const error1 = new Error("error1");
 
@@ -106,7 +111,7 @@ function assertIterResult<R>(
   assert.strictEqual(iterResult.done, done, `${prefix}done`);
 }
 
-test("Async iterator instances should have the correct list of properties", () => {
+test("Async iterator instances should have the correct list of properties", async () => {
   const s = new ReadableStream();
   const it = s.values();
   const proto = Object.getPrototypeOf(it);
@@ -647,4 +652,335 @@ test("next() that succeeds; next() that reports an error(); return() [no awaitin
     true,
     "return()"
   );
+});
+
+test("next() that succeeds; return()", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      c.enqueue(timesPulled);
+      ++timesPulled;
+    },
+  });
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResult1 = await it.next();
+  assertIterResult(iterResult1, 0, false, "next()");
+
+  const iterResult2 = (await it.return?.("return value")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult2, "return value", true, "return()");
+
+  assert.strictEqual(timesPulled, 2);
+});
+
+test("next() that succeeds; return() [no awaiting]", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      c.enqueue(timesPulled);
+      ++timesPulled;
+    },
+  });
+  const it = s[Symbol.asyncIterator]();
+
+  const iterResults = await Promise.allSettled([
+    it.next(),
+    it.return?.("return value"),
+  ]);
+
+  assert.strictEqual(
+    iterResults[0].status,
+    "fulfilled",
+    "next() promise status"
+  );
+  assertIterResult(
+    (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    0,
+    false,
+    "next()"
+  );
+
+  assert.strictEqual(
+    iterResults[1].status,
+    "fulfilled",
+    "return() promise status"
+  );
+  assertIterResult(
+    (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    "return value",
+    true,
+    "return()"
+  );
+
+  assert.strictEqual(timesPulled, 2);
+});
+
+test("return(); next()", async () => {
+  const rs = new ReadableStream();
+  const it = rs.values();
+
+  const iterResult1 = (await it.return?.("return value")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult1, "return value", true, "return()");
+
+  const iterResult2 = await it.next();
+  assertIterResult(iterResult2, undefined, true, "next()");
+});
+
+test("return(); next() [no awaiting]", async () => {
+  const rs = new ReadableStream();
+  const it = rs.values();
+
+  const iterResults = await Promise.allSettled([
+    it.return?.("return value"),
+    it.next(),
+  ]);
+
+  assert.strictEqual(
+    iterResults[0].status,
+    "fulfilled",
+    "return() promise status"
+  );
+  assertIterResult(
+    (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    "return value",
+    true,
+    "return()"
+  );
+
+  assert.strictEqual(
+    iterResults[1].status,
+    "fulfilled",
+    "next() promise status"
+  );
+  assertIterResult(
+    (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    undefined,
+    true,
+    "next()"
+  );
+});
+
+test("return(); return()", async () => {
+  const rs = new ReadableStream();
+  const it = rs.values();
+
+  const iterResult1 = (await it.return?.("return value 1")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult1, "return value 1", true, "1st return()");
+
+  const iterResult2 = (await it.return?.("return value 2")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult2, "return value 2", true, "1st return()");
+});
+
+test("return(); return() [no awaiting]", async () => {
+  const rs = new ReadableStream();
+  const it = rs.values();
+
+  const iterResults = await Promise.allSettled([
+    it.return?.("return value 1"),
+    it.return?.("return value 2"),
+  ]);
+
+  assert.strictEqual(
+    iterResults[0].status,
+    "fulfilled",
+    "1st return() promise status"
+  );
+  assertIterResult(
+    (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    "return value 1",
+    true,
+    "1st return()"
+  );
+
+  assert.strictEqual(
+    iterResults[1].status,
+    "fulfilled",
+    "2nd return() promise status"
+  );
+  assertIterResult(
+    (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
+      .value,
+    "return value 2",
+    true,
+    "1st return()"
+  );
+});
+
+test("values() throws if there's already a lock", () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue(0);
+      c.close();
+    },
+  });
+  s.values();
+  assert.throw(() => s.values(), TypeError, undefined, "values() should throw");
+});
+
+test("Acquiring a reader after exhaustively async-iterating a stream", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue(1);
+      c.enqueue(2);
+      c.enqueue(3);
+      c.close();
+    },
+  });
+
+  const chunks: unknown[] = [];
+  for await (const chunk of s) {
+    chunks.push(chunk);
+  }
+  assert.deepEqual(chunks, [1, 2, 3]);
+
+  const reader = s.getReader();
+  await reader.closed;
+});
+
+test("Acquiring a reader after return()ing from a stream that errors", async () => {
+  let timesPulled = 0;
+  const s = new ReadableStream({
+    pull(c) {
+      if (timesPulled === 0) {
+        c.enqueue(0);
+        ++timesPulled;
+      } else {
+        c.error(error1);
+      }
+    },
+  });
+
+  const it = s.values({ preventCancel: true });
+
+  const iterResult1 = await it.next();
+  assertIterResult(iterResult1, 0, false, "1st next()");
+
+  let reached1 = false;
+  try {
+    await it.next();
+    reached1 = true;
+  } catch (e) {
+    assert.strictEqual(e, error1, "2nd next()");
+  }
+  assert.isFalse(reached1);
+
+  const iterResult2 = (await it.return?.("return value")) as IteratorResult<
+    unknown,
+    unknown
+  >;
+  assertIterResult(iterResult2, "return value", true, "return()");
+
+  // i.e. it should not reject with a generic "this stream is locked" TypeError.
+  const reader = s.getReader();
+  let reached2 = false;
+  try {
+    await reader.closed;
+    reached2 = true;
+  } catch (e) {
+    assert.strictEqual(
+      e,
+      error1,
+      "closed on the new reader should reject with the error"
+    );
+  }
+  assert.isFalse(reached2);
+});
+
+test("Acquiring a reader after partially async-iterating a stream", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue(1);
+      c.enqueue(2);
+      c.enqueue(3);
+      c.close();
+    },
+  });
+
+  // read the first two chunks, then cancel
+  const chunks: unknown[] = [];
+  for await (const chunk of s) {
+    chunks.push(chunk);
+    if (chunk >= 2) {
+      break;
+    }
+  }
+  assert.deepEqual(chunks, [1, 2]);
+
+  const reader = s.getReader();
+  await reader.closed;
+});
+
+test("Acquiring a reader and reading the remaining chunks after partially async-iterating a stream with preventCancel = true", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue(1);
+      c.enqueue(2);
+      c.enqueue(3);
+      c.close();
+    },
+  });
+
+  // read the first two chunks, then release lock
+  const chunks: unknown[] = [];
+  for await (const chunk of s.values({ preventCancel: true })) {
+    chunks.push(chunk);
+    if (chunk >= 2) {
+      break;
+    }
+  }
+  assert.deepEqual(chunks, [1, 2]);
+
+  const reader = s.getReader();
+  const readResult = (await reader.read()) as IteratorResult<unknown, unknown>;
+  assertIterResult(readResult, 3, false);
+  await reader.closed;
+});
+
+for (const preventCancel of [false, true]) {
+  test(`return() should unlock the stream synchronously when preventCancel = ${preventCancel}`, () => {
+    const rs = new ReadableStream();
+    rs.values({ preventCancel }).return?.();
+    // The test passes if this line doesn't throw.
+    rs.getReader();
+  });
+}
+
+test("close() while next() is pending", async () => {
+  const rs = new ReadableStream({
+    async start(c) {
+      c.enqueue("a");
+      c.enqueue("b");
+      c.enqueue("c");
+      await flushAsyncEvents();
+      // At this point, the async iterator has a read request in the stream's queue for its pending next() promise.
+      // Closing the stream now causes two things to happen *synchronously*:
+      //  1. ReadableStreamClose resolves reader.[[closedPromise]] with undefined.
+      //  2. ReadableStreamClose calls the read request's close steps, which calls ReadableStreamReaderGenericRelease,
+      //     which replaces reader.[[closedPromise]] with a rejected promise.
+      c.close();
+    },
+  });
+
+  const chunks: unknown[] = [];
+  for await (const chunk of rs) {
+    chunks.push(chunk);
+  }
+  assert.deepEqual(chunks, ["a", "b", "c"]);
 });
