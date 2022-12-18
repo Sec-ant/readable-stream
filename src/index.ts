@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 declare global {
   interface ReadableStreamIteratorOptions {
     preventCancel?: boolean;
@@ -8,6 +9,105 @@ declare global {
   }
 }
 
+class ReadableStreamAsyncIterableIterator<R, TReturn = unknown>
+  implements AsyncIterableIterator<R>
+{
+  #reader: ReadableStreamDefaultReader<R>;
+  #preventCancel: boolean;
+  #isFinished = false;
+  #ongoingPromise:
+    | Promise<
+        ReadableStreamReadResult<R> | ReadableStreamReadDoneResult<TReturn>
+      >
+    | undefined = undefined;
+  constructor(reader: ReadableStreamDefaultReader<R>, preventCancel: boolean) {
+    this.#reader = reader;
+    this.#preventCancel = preventCancel;
+  }
+  next() {
+    const nextSteps = () => this.#nextSteps();
+    this.#ongoingPromise = this.#ongoingPromise
+      ? this.#ongoingPromise.then(nextSteps, nextSteps)
+      : nextSteps();
+    return this.#ongoingPromise as Promise<IteratorResult<R, undefined>>;
+  }
+  return(value?: TReturn) {
+    const returnSteps = () => this.#returnSteps(value);
+    return (
+      this.#ongoingPromise
+        ? this.#ongoingPromise.then(returnSteps, returnSteps)
+        : returnSteps()
+    ) as Promise<IteratorReturnResult<TReturn>>;
+  }
+  [Symbol.asyncIterator]() {
+    return this;
+  }
+  async #nextSteps(): Promise<ReadableStreamReadResult<R>> {
+    if (this.#isFinished) {
+      return {
+        done: true,
+        value: undefined,
+      };
+    }
+    let readResult: ReadableStreamReadResult<R>;
+    try {
+      readResult = await this.#reader.read();
+    } catch (e) {
+      this.#ongoingPromise = undefined;
+      this.#isFinished = true;
+      this.#reader.releaseLock();
+      throw e;
+    }
+    if (readResult.done) {
+      this.#ongoingPromise = undefined;
+      this.#isFinished = true;
+      this.#reader.releaseLock();
+    }
+    return readResult;
+  }
+  async #returnSteps(
+    value?: TReturn
+  ): Promise<ReadableStreamReadDoneResult<TReturn>> {
+    if (this.#isFinished) {
+      return {
+        done: true,
+        value,
+      };
+    }
+    this.#isFinished = true;
+    if (!this.#preventCancel) {
+      const result = this.#reader.cancel(value);
+      this.#reader.releaseLock();
+      await result;
+      return {
+        done: true,
+        value,
+      };
+    }
+    this.#reader.releaseLock();
+    return {
+      done: true,
+      value,
+    };
+  }
+}
+
+ReadableStream.prototype.values ??= ReadableStream.prototype[
+  Symbol.asyncIterator
+] ??= function <R, TReturn = unknown>(
+  this: ReadableStream<R>,
+  { preventCancel = false }: ReadableStreamIteratorOptions = {
+    preventCancel: false,
+  }
+) {
+  const reader = this.getReader();
+  return new ReadableStreamAsyncIterableIterator<R, TReturn>(
+    reader,
+    preventCancel
+  );
+};
+
+/*
 ReadableStream.prototype.values ??= ReadableStream.prototype[
   Symbol.asyncIterator
 ] ??= function <R, TReturn = unknown>(
@@ -89,7 +189,7 @@ ReadableStream.prototype.values ??= ReadableStream.prototype[
     };
   }
 };
-
+*/
 ReadableStream.prototype[Symbol.asyncIterator] ??=
   ReadableStream.prototype.values;
 
