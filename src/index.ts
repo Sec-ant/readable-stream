@@ -25,13 +25,17 @@ ReadableStream.prototype.values = ReadableStream.prototype[
       >
     | undefined = undefined;
   return {
-    async next() {
-      ongoingPromise ? await ongoingPromise : undefined;
-      return (ongoingPromise = nextSteps());
+    next() {
+      ongoingPromise = ongoingPromise
+        ? ongoingPromise.then(nextSteps, nextSteps)
+        : nextSteps();
+      return ongoingPromise;
     },
-    async return(value?: TReturn) {
-      ongoingPromise ? await ongoingPromise : undefined;
-      return returnSteps(value);
+    return(value?: TReturn) {
+      const localReturnSteps = () => returnSteps(value);
+      return ongoingPromise
+        ? ongoingPromise.then(localReturnSteps, localReturnSteps)
+        : localReturnSteps();
     },
     [Symbol.asyncIterator]() {
       return this;
