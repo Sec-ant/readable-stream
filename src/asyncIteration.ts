@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { AsyncIterableIteratorPrototype } from "./asyncIterableIteratorPrototype.js";
+import { AsyncIterablePrototype } from "./asyncIterablePrototype.js";
 
 declare global {
   interface ReadableStreamIteratorOptions {
@@ -114,7 +114,7 @@ function _return<R, TReturn>(
 Object.defineProperty(_return, "name", { value: "return" });
 
 const readableStreamAsyncIterableIteratorPrototype: ReadableStreamAsyncIterableIterator<unknown> =
-  Object.create(AsyncIterableIteratorPrototype, {
+  Object.create(AsyncIterablePrototype, {
     next: {
       enumerable: true,
       configurable: true,
