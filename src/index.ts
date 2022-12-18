@@ -9,6 +9,87 @@ declare global {
   }
 }
 
+/*
+class ReadableStreamAsyncIterator<R, TReturn = unknown>
+  implements AsyncIterator<R>
+{
+  #reader: ReadableStreamDefaultReader<R>;
+  #isFinished = false;
+  #ongoingPromise:
+    | Promise<
+        ReadableStreamReadResult<R> | ReadableStreamReadDoneResult<TReturn>
+      >
+    | undefined = undefined;
+  #preventCancel: boolean;
+  constructor(reader: ReadableStreamDefaultReader<R>, preventCancel = false) {
+    this.#reader = reader;
+    this.#preventCancel = preventCancel;
+  }
+  next() {
+    this.#ongoingPromise = this.#ongoingPromise
+      ? this.#ongoingPromise.then(this.#nextSteps, this.#nextSteps)
+      : this.#nextSteps();
+    return this.#ongoingPromise as Promise<IteratorResult<R>>;
+  }
+  return(value?: TReturn) {
+    const localReturnSteps = () => this.#returnSteps(value);
+    return (
+      this.#ongoingPromise
+        ? this.#ongoingPromise.then(localReturnSteps, localReturnSteps)
+        : localReturnSteps()
+    ) as Promise<IteratorReturnResult<TReturn>>;
+  }
+  async #nextSteps(): Promise<ReadableStreamReadResult<R>> {
+    if (this.#isFinished) {
+      return {
+        done: true,
+        value: undefined,
+      };
+    }
+    let readResult: ReadableStreamReadResult<R>;
+    try {
+      readResult = await this.#reader.read();
+    } catch (e) {
+      this.#ongoingPromise = undefined;
+      this.#isFinished = true;
+      this.#reader.releaseLock();
+      throw e;
+    }
+    if (readResult.done) {
+      this.#ongoingPromise = undefined;
+      this.#isFinished = true;
+      this.#reader.releaseLock();
+    }
+    return readResult;
+  }
+  async #returnSteps(
+    value?: TReturn
+  ): Promise<ReadableStreamReadDoneResult<TReturn>> {
+    if (this.#isFinished) {
+      return {
+        done: true,
+        value,
+      };
+    }
+    this.#isFinished = true;
+    if (!this.#preventCancel) {
+      const result = this.#reader.cancel(value);
+      this.#reader.releaseLock();
+      await result;
+      return {
+        done: true,
+        value,
+      };
+    }
+    this.#reader.releaseLock();
+    return {
+      done: true,
+      value,
+    };
+  }
+}
+*/
+
 ReadableStream.prototype.values = ReadableStream.prototype[
   Symbol.asyncIterator
 ] = function <R, TReturn = unknown>(

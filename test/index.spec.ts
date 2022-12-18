@@ -1,4 +1,3 @@
-import type {} from "../src/index";
 import { test, assert } from "vitest";
 
 await import("../src/index");
