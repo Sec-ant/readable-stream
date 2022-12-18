@@ -5,6 +5,7 @@
  */
 
 import { test, assert } from "vitest";
+import { AsyncIterableIteratorPrototype } from "../src/asyncIterableIteratorPrototype";
 
 // remove possibly already implemented polyfills or apis
 delete (ReadableStream.prototype as Partial<ReadableStream>).values;
@@ -22,15 +23,10 @@ test("Async iterator instances should have the correct list of properties", asyn
   const it = s.values();
   const proto = Object.getPrototypeOf(it);
 
-  const AsyncIteratorPrototype = Object.getPrototypeOf(
-    Object.getPrototypeOf(async function* () {
-      /* void */
-    }).prototype
-  );
   assert.strictEqual(
     Object.getPrototypeOf(proto),
-    AsyncIteratorPrototype,
-    "prototype should extend AsyncIteratorPrototype"
+    AsyncIterableIteratorPrototype,
+    "prototype should extend AsyncIterableIteratorPrototype"
   );
   const methods = ["next", "return"].sort();
   assert.deepEqual(
