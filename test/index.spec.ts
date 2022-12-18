@@ -17,7 +17,7 @@ await import("../src/index");
 
 const error1 = new Error("error1");
 
-test.skip("Async iterator instances should have the correct list of properties", async () => {
+test("Async iterator instances should have the correct list of properties", async () => {
   const s = new ReadableStream();
   const it = s.values();
   const proto = Object.getPrototypeOf(it);

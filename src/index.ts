@@ -9,8 +9,14 @@ declare global {
   }
 }
 
-class ReadableStreamAsyncIterableIterator<R, TReturn = unknown>
-  implements AsyncIterableIterator<R>
+export const AsyncIterableIteratorPrototype: object = Object.getPrototypeOf(
+  Object.getPrototypeOf(async function* () {
+    /* void */
+  }).prototype
+);
+
+class ReadableStreamAsyncIterableIteratorImpl<R, TReturn>
+  implements AsyncIterator<R>
 {
   #reader: ReadableStreamDefaultReader<R>;
   #preventCancel: boolean;
@@ -38,9 +44,6 @@ class ReadableStreamAsyncIterableIterator<R, TReturn = unknown>
         ? this.#ongoingPromise.then(returnSteps, returnSteps)
         : returnSteps()
     ) as Promise<IteratorReturnResult<TReturn>>;
-  }
-  [Symbol.asyncIterator]() {
-    return this;
   }
   async #nextSteps(): Promise<ReadableStreamReadResult<R>> {
     if (this.#isFinished) {
@@ -92,6 +95,42 @@ class ReadableStreamAsyncIterableIterator<R, TReturn = unknown>
   }
 }
 
+interface ReadableStreamAsyncIterableIterator<R, TReturn = unknown>
+  extends AsyncIterableIterator<R> {
+  implement: ReadableStreamAsyncIterableIteratorImpl<R, TReturn>;
+}
+
+function next<R, TReturn>(
+  this: ReadableStreamAsyncIterableIterator<R, TReturn>
+) {
+  return this.implement.next();
+}
+
+function _return<R, TReturn>(
+  this: ReadableStreamAsyncIterableIterator<R, TReturn>,
+  returnValue?: TReturn
+) {
+  return this.implement.return(returnValue);
+}
+
+Object.defineProperty(_return, "name", { value: "return" });
+
+const readableStreamAsyncIterableIteratorPrototype: ReadableStreamAsyncIterableIterator<unknown> =
+  Object.create(AsyncIterableIteratorPrototype, {
+    next: {
+      enumerable: true,
+      configurable: true,
+      writable: true,
+      value: next,
+    },
+    return: {
+      enumerable: true,
+      configurable: true,
+      writable: true,
+      value: _return,
+    },
+  });
+
 ReadableStream.prototype.values ??= ReadableStream.prototype[
   Symbol.asyncIterator
 ] ??= function <R, TReturn = unknown>(
@@ -101,95 +140,18 @@ ReadableStream.prototype.values ??= ReadableStream.prototype[
   }
 ) {
   const reader = this.getReader();
-  return new ReadableStreamAsyncIterableIterator<R, TReturn>(
+  const implement = new ReadableStreamAsyncIterableIteratorImpl<R, TReturn>(
     reader,
     preventCancel
   );
+  const readableStreamAsyncIterableIterator: ReadableStreamAsyncIterableIterator<
+    R,
+    TReturn
+  > = Object.create(readableStreamAsyncIterableIteratorPrototype);
+  readableStreamAsyncIterableIterator.implement = implement;
+  return readableStreamAsyncIterableIterator;
 };
 
-/*
-ReadableStream.prototype.values ??= ReadableStream.prototype[
-  Symbol.asyncIterator
-] ??= function <R, TReturn = unknown>(
-  this: ReadableStream<R>,
-  { preventCancel = false }: ReadableStreamIteratorOptions = {
-    preventCancel: false,
-  }
-) {
-  const reader = this.getReader();
-  let isFinished = false;
-  let ongoingPromise:
-    | Promise<
-        ReadableStreamReadResult<R> | ReadableStreamReadDoneResult<TReturn>
-      >
-    | undefined = undefined;
-  return {
-    next() {
-      ongoingPromise = ongoingPromise
-        ? ongoingPromise.then(nextSteps, nextSteps)
-        : nextSteps();
-      return ongoingPromise;
-    },
-    return(value?: TReturn) {
-      const localReturnSteps = () => returnSteps(value);
-      return ongoingPromise
-        ? ongoingPromise.then(localReturnSteps, localReturnSteps)
-        : localReturnSteps();
-    },
-    [Symbol.asyncIterator]() {
-      return this;
-    },
-  } as AsyncIterableIterator<R>;
-  async function nextSteps(): Promise<ReadableStreamReadResult<R>> {
-    if (isFinished) {
-      return {
-        done: true,
-        value: undefined,
-      };
-    }
-    let readResult: ReadableStreamReadResult<R>;
-    try {
-      readResult = await reader.read();
-    } catch (e) {
-      ongoingPromise = undefined;
-      isFinished = true;
-      reader.releaseLock();
-      throw e;
-    }
-    if (readResult.done) {
-      ongoingPromise = undefined;
-      isFinished = true;
-      reader.releaseLock();
-    }
-    return readResult;
-  }
-  async function returnSteps(
-    value?: TReturn
-  ): Promise<ReadableStreamReadDoneResult<TReturn>> {
-    if (isFinished) {
-      return {
-        done: true,
-        value,
-      };
-    }
-    isFinished = true;
-    if (!preventCancel) {
-      const result = reader.cancel(value);
-      reader.releaseLock();
-      await result;
-      return {
-        done: true,
-        value,
-      };
-    }
-    reader.releaseLock();
-    return {
-      done: true,
-      value,
-    };
-  }
-};
-*/
 ReadableStream.prototype[Symbol.asyncIterator] ??=
   ReadableStream.prototype.values;
 
