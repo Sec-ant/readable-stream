@@ -14,7 +14,7 @@ delete (ReadableStream.prototype as Partial<ReadableStream>)[
 ];
 
 // import this polyfill
-await import("../src/index");
+await import("../src/asyncIteration");
 
 const error1 = new Error("error1");
 
