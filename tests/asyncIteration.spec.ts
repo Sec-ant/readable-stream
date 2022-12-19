@@ -5,6 +5,7 @@
  */
 
 import { test, assert, describe } from "vitest";
+import { flushAsyncEvents } from "./stubs";
 import { AsyncIterablePrototype } from "../src/asyncIterablePrototype";
 
 // remove possibly already implemented polyfills or apis
@@ -894,27 +895,6 @@ test("close() while next() is pending", async () => {
   }
   assert.deepEqual(chunks, ["a", "b", "c"]);
 });
-
-function stepTimeout<R>(
-  func: (...params: R[]) => unknown,
-  timeout: number,
-  ...args: R[]
-) {
-  return setTimeout(() => {
-    func.apply(this, args);
-  }, timeout);
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => stepTimeout(resolve, ms));
-}
-
-async function flushAsyncEvents() {
-  await delay(0);
-  await delay(0);
-  await delay(0);
-  return await delay(0);
-}
 
 function recordingReadableStream<R>(
   extras: UnderlyingDefaultSource<R> = {},
