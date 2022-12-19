@@ -1,42 +1,44 @@
-export function fromIterable<R = unknown>(
-  iterable: Iterable<R> | AsyncIterable<R>
-) {
-  if (iterable instanceof ReadableStream) {
-    return iterable;
-  }
-  let iterator: AsyncIterator<R, undefined> | Iterator<R, undefined>;
-  return new ReadableStream<R>({
-    start() {
-      if (isIterable(iterable)) {
-        iterator = iterable[Symbol.iterator]();
-      } else if (isAsyncIterable(iterable)) {
-        iterator = iterable[Symbol.asyncIterator]();
-      } else {
-        throw new Error("Not an iterable: " + iterable);
-      }
-    },
-    async pull(controller: ReadableStreamDefaultController<R>) {
-      const { value, done } = await iterator.next();
+export function fromIterable<T>(
+  iterable: Iterable<T> | AsyncIterable<T>
+): ReadableStream<T> {
+  const asyncIterator: AsyncIterator<T> = getAsyncIterator(iterable);
+  return new ReadableStream({
+    async pull(controller) {
+      const { value, done } = await asyncIterator.next();
       if (done) {
         controller.close();
-        return;
+      } else {
+        controller.enqueue(value);
       }
-      controller.enqueue(value);
     },
-    cancel(reason) {
-      iterator.return && iterator.return(reason);
+    async cancel(reason) {
+      if (typeof asyncIterator.throw == "function") {
+        try {
+          await asyncIterator.throw(reason);
+        } catch {
+          /* `iterator.throw()` always throws on site. We catch it. */
+        }
+      }
     },
   });
 }
 
-function isIterable<R = unknown>(
-  iterable: Iterable<R> | AsyncIterable<R>
-): iterable is Iterable<R> {
-  return Symbol.iterator in iterable;
-}
-
-function isAsyncIterable<R = unknown>(
-  iterable: Iterable<R> | AsyncIterable<R>
-): iterable is AsyncIterable<R> {
-  return Symbol.asyncIterator in iterable;
+function getAsyncIterator<T>(obj: AsyncIterable<T> | Iterable<T>) {
+  let asyncIteratorMethod = (obj as AsyncIterable<T>)[
+    Symbol.asyncIterator
+  ]?.bind(obj);
+  if (asyncIteratorMethod === undefined) {
+    // TODO can we improve this try?
+    (obj as Iterable<T>)[Symbol.iterator]();
+    asyncIteratorMethod = async function* () {
+      return yield* obj as Iterable<T>;
+    };
+  }
+  const asyncIterator = asyncIteratorMethod();
+  /*
+  if (typeof asyncIterator !== "object") {
+    throw new TypeError(`${typeof asyncIterator} is not an object`);
+  }
+  */
+  return asyncIterator;
 }

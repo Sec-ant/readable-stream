@@ -188,3 +188,144 @@ for (const [label, factory] of iterableFactories) {
     await reader.closed;
   });
 }
+
+const badIterables = [
+  ["null", null],
+  ["undefined", undefined],
+  ["0", 0],
+  ["NaN", NaN],
+  ["true", true],
+  ["{}", {}],
+  ["Object.create(null)", Object.create(null)],
+  ["a function", () => 42],
+  ["a symbol", Symbol()],
+  [
+    "an object with a non-callable @@iterator method",
+    {
+      [Symbol.iterator]: 42,
+    },
+  ],
+  [
+    "an object with a non-callable @@asyncIterator method",
+    {
+      [Symbol.asyncIterator]: 42,
+    },
+  ],
+];
+
+for (const [label, iterable] of badIterables) {
+  test(`fromIterable throws on invalid iterables; specifically ${label}`, () => {
+    assert.throw(
+      () => fromIterable(iterable),
+      TypeError,
+      undefined,
+      "fromIterable() should throw a TypeError"
+    );
+  });
+}
+
+test("fromIterable re-throws errors from calling the @@iterator method", () => {
+  const theError = new Error("a unique string");
+  const iterable = {
+    [Symbol.iterator]() {
+      throw theError;
+    },
+  };
+
+  assert.throw(
+    () => fromIterable(iterable),
+    theError,
+    "a unique string",
+    "fromIterable() should re-throw the error"
+  );
+});
+
+test("fromIterable re-throws errors from calling the @@asyncIterator method", () => {
+  const theError = new Error("a unique string");
+  const iterable = {
+    [Symbol.asyncIterator]() {
+      throw theError;
+    },
+  };
+
+  assert.throw(
+    () => fromIterable(iterable),
+    theError,
+    "a unique string",
+    "fromIterable() should re-throw the error"
+  );
+});
+
+test("fromIterable ignores @@iterator if @@asyncIterator exists", () => {
+  const theError = new Error("a unique string");
+  let reached = false;
+  const iterable = {
+    [Symbol.iterator]() {
+      reached = true;
+    },
+    [Symbol.asyncIterator]() {
+      throw theError;
+    },
+  };
+
+  assert.throw(
+    () => fromIterable(iterable),
+    theError,
+    "a unique string",
+    "fromIterable() should re-throw the error"
+  );
+
+  assert.isFalse(reached);
+});
+
+test("fromIterable accepts an empty iterable", async () => {
+  const iterable = {
+    async next() {
+      return { value: undefined, done: true };
+    },
+    [Symbol.asyncIterator]: () => iterable,
+  };
+
+  const rs = fromIterable(iterable);
+  const reader = rs.getReader();
+
+  const read = await reader.read();
+  assert.deepEqual(
+    read,
+    { value: undefined, done: true },
+    "first read should be done"
+  );
+
+  await reader.closed;
+});
+
+test("fromIterable: stream errors when next() rejects", async () => {
+  const theError = new Error("a unique string");
+
+  const iterable = {
+    async next() {
+      throw theError;
+    },
+    [Symbol.asyncIterator]: () => iterable,
+  };
+
+  const rs = fromIterable(iterable);
+  const reader = rs.getReader();
+
+  const rejectedPromises = await Promise.allSettled([
+    reader.read(),
+    reader.closed,
+  ]);
+
+  assert.strictEqual(rejectedPromises[0].status, "rejected");
+  assert.strictEqual(
+    (rejectedPromises[0] as PromiseRejectedResult).reason,
+    theError
+  );
+
+  assert.strictEqual(rejectedPromises[1].status, "rejected");
+  assert.strictEqual(
+    (rejectedPromises[1] as PromiseRejectedResult).reason,
+    theError
+  );
+});
