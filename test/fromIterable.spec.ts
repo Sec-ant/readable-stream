@@ -5,7 +5,7 @@
  * and rewritten for Vitest
  */
 
-import { test, assert } from "vitest";
+import { test, assert, describe } from "vitest";
 import { fromIterable } from "../src/fromIterable";
 
 const iterableFactories: [
@@ -159,35 +159,37 @@ const iterableFactories: [
   ],
 ];
 
-for (const [label, factory] of iterableFactories) {
-  test(`fromIterable accepts ${label}`, async () => {
-    const iterable = factory();
-    const rs = fromIterable(iterable);
-    assert.strictEqual(
-      rs.constructor,
-      ReadableStream,
-      "fromIterable() should return a ReadableStream"
-    );
+describe("fromIterable accepts valid iterables", () => {
+  for (const [label, factory] of iterableFactories) {
+    test(`fromIterable accepts ${label}`, async () => {
+      const iterable = factory();
+      const rs = fromIterable(iterable);
+      assert.strictEqual(
+        rs.constructor,
+        ReadableStream,
+        "fromIterable() should return a ReadableStream"
+      );
 
-    const reader = rs.getReader();
-    assert.deepEqual(
-      await reader.read(),
-      { value: "a", done: false },
-      "first read should be correct"
-    );
-    assert.deepEqual(
-      await reader.read(),
-      { value: "b", done: false },
-      "second read should be correct"
-    );
-    assert.deepEqual(
-      await reader.read(),
-      { value: undefined, done: true },
-      "third read should be done"
-    );
-    await reader.closed;
-  });
-}
+      const reader = rs.getReader();
+      assert.deepEqual(
+        await reader.read(),
+        { value: "a", done: false },
+        "first read should be correct"
+      );
+      assert.deepEqual(
+        await reader.read(),
+        { value: "b", done: false },
+        "second read should be correct"
+      );
+      assert.deepEqual(
+        await reader.read(),
+        { value: undefined, done: true },
+        "third read should be done"
+      );
+      await reader.closed;
+    });
+  }
+});
 
 const badIterables = [
   ["null", null],
@@ -213,16 +215,18 @@ const badIterables = [
   ],
 ];
 
-for (const [label, iterable] of badIterables) {
-  test(`fromIterable throws on invalid iterables; specifically ${label}`, () => {
-    assert.throw(
-      () => fromIterable(iterable),
-      TypeError,
-      undefined,
-      "fromIterable() should throw a TypeError"
-    );
-  });
-}
+describe("fromIterable throws on invalid iterables", () => {
+  for (const [label, iterable] of badIterables) {
+    test(`fromIterable throws on invalid iterables; specifically ${label}`, () => {
+      assert.throw(
+        () => fromIterable(iterable),
+        TypeError,
+        undefined,
+        "fromIterable() should throw a TypeError"
+      );
+    });
+  }
+});
 
 test("fromIterable re-throws errors from calling the @@iterator method", () => {
   const theError = new Error("a unique string");

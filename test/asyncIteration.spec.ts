@@ -4,7 +4,7 @@
  * and rewritten for Vitest
  */
 
-import { test, assert } from "vitest";
+import { test, assert, describe } from "vitest";
 import { AsyncIterablePrototype } from "../src/asyncIterablePrototype";
 
 // remove possibly already implemented polyfills or apis
@@ -235,71 +235,80 @@ test("Async-iterating a partially consumed stream", async () => {
   }
   assert.deepEqual(chunks, [2, 3]);
 });
+describe("Cancellation behavior", () => {
+  describe("Cancellation behavior inside loop body", () => {
+    for (const type of ["throw", "break", "return"]) {
+      for (const preventCancel of [false, true]) {
+        test(`Cancellation behavior when ${type}ing inside loop body; preventCancel = ${preventCancel}`, async () => {
+          const s = recordingReadableStream({
+            start(c) {
+              c.enqueue(0);
+            },
+          });
 
-for (const type of ["throw", "break", "return"]) {
-  for (const preventCancel of [false, true]) {
-    test(`Cancellation behavior when ${type}ing inside loop body; preventCancel = ${preventCancel}`, async () => {
-      const s = recordingReadableStream({
-        start(c) {
-          c.enqueue(0);
-        },
-      });
+          // use a separate function for the loop body so return does not stop the test
+          const loop = async () => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _ of s.values({ preventCancel })) {
+              if (type === "throw") {
+                throw new Error();
+              } else if (type === "break") {
+                break;
+              } else if (type === "return") {
+                return;
+              }
+            }
+          };
 
-      // use a separate function for the loop body so return does not stop the test
-      const loop = async () => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for await (const _ of s.values({ preventCancel })) {
-          if (type === "throw") {
-            throw new Error();
-          } else if (type === "break") {
-            break;
-          } else if (type === "return") {
-            return;
+          try {
+            await loop();
+          } catch (e) {
+            /* empty */
           }
-        }
-      };
 
-      try {
-        await loop();
-      } catch (e) {
-        /* empty */
+          if (preventCancel) {
+            assert.deepEqual(
+              s.events,
+              ["pull"],
+              "cancel() should not be called"
+            );
+          } else {
+            assert.deepEqual(
+              s.events,
+              ["pull", "cancel", undefined],
+              "cancel() should be called"
+            );
+          }
+        });
       }
-
-      if (preventCancel) {
-        assert.deepEqual(s.events, ["pull"], "cancel() should not be called");
-      } else {
-        assert.deepEqual(
-          s.events,
-          ["pull", "cancel", undefined],
-          "cancel() should be called"
-        );
-      }
-    });
-  }
-}
-
-for (const preventCancel of [false, true]) {
-  test(`Cancellation behavior when manually calling return(); preventCancel = ${preventCancel}`, async () => {
-    const s = recordingReadableStream({
-      start(c) {
-        c.enqueue(0);
-      },
-    });
-
-    const it = s.values({ preventCancel });
-    await it.return?.();
-
-    if (preventCancel) {
-      assert.deepEqual(s.events, [], "cancel() should not be called");
-    } else {
-      assert.deepEqual(
-        s.events,
-        ["cancel", undefined],
-        "cancel() should be called"
-      );
     }
   });
-}
+
+  describe("Cancellation behavior when manually calling return()", () => {
+    for (const preventCancel of [false, true]) {
+      test(`Cancellation behavior when manually calling return(); preventCancel = ${preventCancel}`, async () => {
+        const s = recordingReadableStream({
+          start(c) {
+            c.enqueue(0);
+          },
+        });
+
+        const it = s.values({ preventCancel });
+        await it.return?.();
+
+        if (preventCancel) {
+          assert.deepEqual(s.events, [], "cancel() should not be called");
+        } else {
+          assert.deepEqual(
+            s.events,
+            ["cancel", undefined],
+            "cancel() should be called"
+          );
+        }
+      });
+    }
+  });
+});
 
 test("next() rejects if the stream errors", async () => {
   let timesPulled = 0;
