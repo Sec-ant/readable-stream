@@ -18,7 +18,7 @@ export function fromIterable<R>(
         }
       },
       async cancel(reason) {
-        if (typeof asyncIterator.return == "function") {
+        if (typeof asyncIterator.return === "function") {
           await asyncIterator.return(reason);
         }
       },

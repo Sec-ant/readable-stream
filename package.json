@@ -13,7 +13,6 @@
   "scripts": {
     "clean": "rm -fr ./dist/*.*s",
     "lint": "eslint src",
-    "dev": "vite",
     "build": "npm run lint && npm run clean && tsc && vite build",
     "test": "vitest",
     "test:ui": "vitest --ui"
