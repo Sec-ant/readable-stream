@@ -34,13 +34,13 @@ This package can be used as a side effect if you only need the async iteration s
 import "@sec-ant/readable-stream";
 ```
 
-You can also import the `fromIterable` function which enables you to create a `ReadableStream` from an `Iterable` or an `AsyncIterable`:
+You can also import the `fromIterable` function which enables you to construct a `ReadableStream` from an `Iterable` or an `AsyncIterable`:
 
 ```ts
 import { fromIterable } from "@sec-ant/readable-stream";
 ```
 
-With the help of this package, you can `tee` an `AsyncIterable` like this:
+With the help of this package, you can "`tee`" an `AsyncIterable` like this:
 
 ```ts
 import { fromIterable } from "@sec-ant/readable-stream";
