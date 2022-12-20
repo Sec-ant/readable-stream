@@ -1,16 +1,22 @@
 /* eslint-disable indent */
 import { AsyncIterablePrototype } from "./asyncIterablePrototype.js";
 
+/**
+ * augment global readable stream interface
+ */
 declare global {
-  interface ReadableStreamIteratorOptions {
+  interface ReadableStreamIterationOptions {
     preventCancel?: boolean;
   }
   interface ReadableStream<R> {
     [Symbol.asyncIterator](): AsyncIterableIterator<R>;
-    values(options?: ReadableStreamIteratorOptions): AsyncIterableIterator<R>;
+    values(options?: ReadableStreamIterationOptions): AsyncIterableIterator<R>;
   }
 }
 
+/**
+ * the implementer that does all the heavy works
+ */
 class ReadableStreamAsyncIterableIteratorImpl<R, TReturn>
   implements AsyncIterator<R>
 {
@@ -91,13 +97,22 @@ class ReadableStreamAsyncIterableIteratorImpl<R, TReturn>
   }
 }
 
+// incapsulation
 const implementSymbol = Symbol();
 
+/**
+ * declare `ReadableStreamAsyncIterableIterator` interaface
+ */
 interface ReadableStreamAsyncIterableIterator<R, TReturn>
   extends AsyncIterableIterator<R> {
   [implementSymbol]: ReadableStreamAsyncIterableIteratorImpl<R, TReturn>;
 }
 
+/**
+ * A next method in an iterator protocal
+ * @param this
+ * @returns
+ */
 function _next<R, TReturn>(
   this: ReadableStreamAsyncIterableIterator<R, TReturn>
 ) {
@@ -105,6 +120,12 @@ function _next<R, TReturn>(
 }
 Object.defineProperty(_next, "name", { value: "next" });
 
+/**
+ * A return method in an iterator protocal
+ * @param this
+ * @param returnValue
+ * @returns
+ */
 function _return<R, TReturn>(
   this: ReadableStreamAsyncIterableIterator<R, TReturn>,
   returnValue?: TReturn
@@ -113,6 +134,9 @@ function _return<R, TReturn>(
 }
 Object.defineProperty(_return, "name", { value: "return" });
 
+/**
+ * create `readableStreamAsyncIterableIteratorPrototype`
+ */
 const readableStreamAsyncIterableIteratorPrototype: ReadableStreamAsyncIterableIterator<
   unknown,
   unknown
@@ -133,24 +157,31 @@ const readableStreamAsyncIterableIteratorPrototype: ReadableStreamAsyncIterableI
 
 ReadableStream.prototype.values ??= ReadableStream.prototype[
   Symbol.asyncIterator
-] ??= function <R, TReturn>(
-  this: ReadableStream<R>,
-  { preventCancel = false }: ReadableStreamIteratorOptions = {
-    preventCancel: false,
-  }
-) {
-  const reader = this.getReader();
-  const implement = new ReadableStreamAsyncIterableIteratorImpl<R, TReturn>(
-    reader,
-    preventCancel
-  );
-  const readableStreamAsyncIterableIterator: ReadableStreamAsyncIterableIterator<
-    R,
-    TReturn
-  > = Object.create(readableStreamAsyncIterableIteratorPrototype);
-  readableStreamAsyncIterableIterator[implementSymbol] = implement;
-  return readableStreamAsyncIterableIterator;
-};
+] ??=
+  /**
+   * Get an async iterable iterator from a readable stream
+   * @param this
+   * @param readableStreamIterationOptions
+   * @returns
+   */
+  function <R, TReturn>(
+    this: ReadableStream<R>,
+    { preventCancel = false }: ReadableStreamIterationOptions = {
+      preventCancel: false,
+    }
+  ) {
+    const reader = this.getReader();
+    const implement = new ReadableStreamAsyncIterableIteratorImpl<R, TReturn>(
+      reader,
+      preventCancel
+    );
+    const readableStreamAsyncIterableIterator: ReadableStreamAsyncIterableIterator<
+      R,
+      TReturn
+    > = Object.create(readableStreamAsyncIterableIteratorPrototype);
+    readableStreamAsyncIterableIterator[implementSymbol] = implement;
+    return readableStreamAsyncIterableIterator;
+  };
 
 ReadableStream.prototype[Symbol.asyncIterator] ??=
   ReadableStream.prototype.values;

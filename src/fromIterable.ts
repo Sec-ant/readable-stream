@@ -1,8 +1,13 @@
-export function fromIterable<T>(
-  iterable: Iterable<T> | AsyncIterable<T>
-): ReadableStream<T> {
-  const asyncIterator: AsyncIterator<T> = getAsyncIterator(iterable);
-  return new ReadableStream(
+/**
+ * Create a new readable stream from an async iterable or a sync iterable
+ * @param iterable
+ * @returns a readable stream
+ */
+export function fromIterable<R>(
+  iterable: Iterable<R> | AsyncIterable<R>
+): ReadableStream<R> {
+  const asyncIterator = getAsyncIterator(iterable);
+  return new ReadableStream<R>(
     {
       async pull(controller) {
         const { value, done } = await asyncIterator.next();
@@ -24,12 +29,17 @@ export function fromIterable<T>(
   );
 }
 
-function getAsyncIterator<T>(obj: AsyncIterable<T> | Iterable<T>) {
-  let asyncIteratorMethod = (obj as AsyncIterable<T>)[
+/**
+ * Get the async iterator from an async iterable or a sync iterable
+ * @param iterable
+ * @returns async iterator
+ */
+function getAsyncIterator<T>(iterable: AsyncIterable<T> | Iterable<T>) {
+  let asyncIteratorMethod = (iterable as AsyncIterable<T>)[
     Symbol.asyncIterator
-  ]?.bind(obj);
+  ]?.bind(iterable);
   if (asyncIteratorMethod === undefined) {
-    const syncIterator = (obj as Iterable<T>)[Symbol.iterator]();
+    const syncIterator = (iterable as Iterable<T>)[Symbol.iterator]();
     const syncIterable = {
       [Symbol.iterator]: () => syncIterator,
     };
