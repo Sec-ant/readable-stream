@@ -1,7 +1,7 @@
 {
   "name": "@sec-ant/readable-stream",
   "version": "0.3.1",
-  "description": "a very simple web streams API ReadableStream asynchronous iteration polyfill",
+  "description": "A Simple Yet Spec-Compliant Asynchronous Iteration Polyfill for ReadableStreams from Web Streams API",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -36,7 +36,8 @@
     "iteration",
     "async-iterator",
     "polyfill",
-    "esm"
+    "esm",
+    "from-iterable"
   ],
   "author": "Ze-Zheng Wu",
   "license": "MIT",
