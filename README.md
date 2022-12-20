@@ -11,9 +11,9 @@ With this polyfill, you'll be able to consume a `ReadableStream` as an `AsyncIte
 - spec: https://streams.spec.whatwg.org/#rs-asynciterator
 - tests: https://github.com/Sec-ant/readable-stream/blob/master/tests/asyncIteration.spec.ts (copied from [wpt](https://github.com/MattiasBuelens/wpt/blob/c894f0086c99ab5efc37691ac60f33a2b37c2e7c/streams/readable-streams/async-iterator.any.js))
 
-### Create a `ReadableStream` from an `AsyncIterable` or an `Iterable`
+### Construction of a `ReadableStream` from an `AsyncIterable` or an `Iterable`
 
-You can use the function `fromIterable` in this package to create a `ReadableStream` from an `AsyncIterable` or an `Iterable`. This mimics the static method `ReadableStream.from`.
+You can use the function `fromIterable` in this package to construct a `ReadableStream` from an `AsyncIterable` or an `Iterable`. This mimics the static method `ReadableStream.from`.
 
 - spec draft: https://github.com/whatwg/streams/pull/1083
 - tests: https://github.com/Sec-ant/readable-stream/blob/master/tests/fromIterable.spec.ts (copied from [wpt draft](https://github.com/MattiasBuelens/wpt/blob/38c4fcee35b5376eac4cf037d9ca1f8343cf06e4/streams/readable-streams/from.any.js))
