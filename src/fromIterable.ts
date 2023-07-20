@@ -19,8 +19,12 @@ export function fromIterable<R>(
       },
       async cancel(reason) {
         if (typeof asyncIterator.return === "function") {
-          await asyncIterator.return(reason);
+          const returnedValue = await asyncIterator.return(reason);
+          if (typeof returnedValue !== "object") {
+            throw new TypeError("return() fulfills with a non-object.");
+          }
         }
+        return reason;
       },
     },
     new CountQueuingStrategy({

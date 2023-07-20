@@ -6,7 +6,8 @@
  */
 
 import { test, assert, describe } from "vitest";
-import { flushAsyncEvents } from "./stubs";
+import { flushAsyncEvents } from "./utils";
+import "../src/asyncIteration";
 import { fromIterable } from "../src/fromIterable";
 
 const iterableFactories: [
@@ -484,6 +485,36 @@ test("fromIterable: return() is not called when iterator completes normally", as
   assert.isFalse(reached);
 });
 
+test("fromIterable: cancel() rejects when return() fulfills with a non-object", async () => {
+  const theError = new Error("a unique string");
+
+  let reached1 = false;
+  let reached2 = false;
+  const iterable = {
+    next: () => (reached1 = true),
+    throw: () => (reached2 = true),
+    async return() {
+      return 42;
+    },
+    [Symbol.asyncIterator]: () => iterable,
+  };
+
+  const rs = fromIterable(iterable as unknown as AsyncIterable<unknown>);
+  const reader = rs.getReader();
+
+  let reached3 = false;
+  try {
+    await reader.cancel(theError);
+    reached3 = true;
+  } catch (e) {
+    assert.instanceOf(e, TypeError, "cancel() should reject with a TypeError");
+  }
+
+  assert.isFalse(reached1, "next() should not be called");
+  assert.isFalse(reached2, "throw() should not be called");
+  assert.isFalse(reached3, "cancel() should not be fullfilled");
+});
+
 test("fromIterable: reader.read() inside next()", async () => {
   let nextCalls = 0;
   let reader: ReadableStreamDefaultReader<string | undefined> | undefined =
@@ -564,6 +595,7 @@ test("fromIterable: reader.cancel() inside return()", async () => {
     async return() {
       returnCalls++;
       await (reader as ReadableStreamDefaultReader<unknown>).cancel();
+      return { done: true };
     },
     [Symbol.asyncIterator]: () => iterable,
   };

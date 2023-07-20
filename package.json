@@ -41,12 +41,14 @@
   "author": "Ze-Zheng Wu",
   "license": "MIT",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.49.0",
-    "@typescript-eslint/parser": "^5.49.0",
-    "@vitest/ui": "^0.28.3",
-    "eslint": "^8.32.0",
-    "typescript": "^4.9.4",
-    "vite": "^4.0.4",
-    "vitest": "^0.28.3"
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "@vitest/browser": "^0.33.0",
+    "@vitest/ui": "^0.33.0",
+    "eslint": "^8.45.0",
+    "playwright": "^1.36.1",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.4",
+    "vitest": "^0.33.0"
   }
 }

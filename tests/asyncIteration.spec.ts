@@ -5,7 +5,7 @@
  */
 
 import { test, assert, describe } from "vitest";
-import { flushAsyncEvents } from "./stubs";
+import { flushAsyncEvents } from "./utils";
 import { AsyncIterablePrototype } from "../src/asyncIterablePrototype";
 
 // remove possibly already implemented polyfills or apis
