@@ -1,6 +1,6 @@
 {
   "name": "@sec-ant/readable-stream",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A Simple Yet Spec-Compliant Asynchronous Iteration Polyfill for ReadableStreams from Web Streams API",
   "type": "module",
   "main": "./dist/index.js",
