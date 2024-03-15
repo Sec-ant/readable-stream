@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "ignoreUnknown": true
+  },
+  "formatter": {
+    "indentStyle": "space"
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "overrides": [
+    {
+      "include": ["*.json"],
+      "json": {
+        "parser": {
+          "allowTrailingCommas": true
+        }
+      }
+    },
+    {
+      "include": ["tests"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noDelete": "off"
+          }
+        }
+      }
+    },
+    {
+      "include": ["vite.config.ts"],
+      "formatter": {
+        "lineWidth": 90
+      }
+    }
+  ]
+}

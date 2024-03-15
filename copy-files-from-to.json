@@ -1,0 +1,11 @@
+{
+  "copyFiles": [
+    {
+      "from": "src/types/*.d.ts",
+      "to": "dist/types"
+    }
+  ],
+  "copyFileSettings": {
+    "whenFileExists": "overwrite"
+  }
+}
