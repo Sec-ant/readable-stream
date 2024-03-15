@@ -1,0 +1,4 @@
+{
+  "installCommand": "install:ci:codesandbox",
+  "node": "18"
+}
