@@ -1,5 +1,11 @@
 # @sec-ant/readable-stream
 
+## 0.4.1
+
+### Patch Changes
+
+- 82a7030: Fix package.json main and module entry point.
+
 ## 0.4.0
 
 ### Minor Changes
