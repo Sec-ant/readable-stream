@@ -3,8 +3,8 @@
  * @param iterable
  * @returns a readable stream
  */
-export function fromIterable<R>(
-  iterable: Iterable<R> | AsyncIterable<R>
+export function fromAnyIterable<R>(
+  iterable: Iterable<R> | AsyncIterable<R>,
 ): ReadableStream<R> {
   const asyncIterator = getAsyncIterator(iterable);
   return new ReadableStream<R>(
@@ -29,7 +29,7 @@ export function fromIterable<R>(
     },
     new CountQueuingStrategy({
       highWaterMark: 0,
-    })
+    }),
   );
 }
 

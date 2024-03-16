@@ -1,18 +1,16 @@
-/* eslint-disable indent */
 /**
  * The following tests are copied from
- * https://github.com/MattiasBuelens/wpt/blob/38c4fcee35b5376eac4cf037d9ca1f8343cf06e4/streams/readable-streams/from.any.js
+ * https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/from.any.js
  * and rewritten for Vitest
  */
 
-import { test, assert, describe } from "vitest";
-import { flushAsyncEvents } from "./utils";
-import "../src/asyncIteration";
-import { fromIterable } from "../src/fromIterable";
+import { assert, describe, test } from "vitest";
+import { fromAnyIterable } from "../src/ponyfill/fromAnyIterable.js";
+import { assumeAs, flushAsyncEvents } from "./utils";
 
 const iterableFactories: [
   string,
-  () => Iterable<unknown> | AsyncIterable<unknown>
+  () => Iterable<unknown> | AsyncIterable<unknown>,
 ][] = [
   [
     "an array of values",
@@ -135,6 +133,23 @@ const iterableFactories: [
   ],
 
   [
+    "an async iterable without return method",
+    () => {
+      const chunks = ["a", "b"];
+      const it = {
+        next() {
+          return Promise.resolve({
+            done: chunks.length === 0,
+            value: chunks.shift(),
+          });
+        },
+        [Symbol.asyncIterator]: () => it,
+      };
+      return it;
+    },
+  ],
+
+  [
     "a ReadableStream",
     () => {
       return new ReadableStream({
@@ -161,32 +176,33 @@ const iterableFactories: [
   ],
 ];
 
-describe("fromIterable accepts valid iterables", () => {
+describe("fromAnyIterable accepts valid iterables", () => {
   for (const [label, factory] of iterableFactories) {
-    test(`fromIterable accepts ${label}`, async () => {
+    test(`fromAnyIterable accepts ${label}`, async () => {
+      await import("../src/polyfill/asyncIterator.js");
       const iterable = factory();
-      const rs = fromIterable(iterable);
+      const rs = fromAnyIterable(iterable);
       assert.strictEqual(
         rs.constructor,
         ReadableStream,
-        "fromIterable() should return a ReadableStream"
+        "fromAnyIterable() should return a ReadableStream",
       );
 
       const reader = rs.getReader();
       assert.deepEqual(
         await reader.read(),
         { value: "a", done: false },
-        "first read should be correct"
+        "first read should be correct",
       );
       assert.deepEqual(
         await reader.read(),
         { value: "b", done: false },
-        "second read should be correct"
+        "second read should be correct",
       );
       assert.deepEqual(
         await reader.read(),
         { value: undefined, done: true },
-        "third read should be done"
+        "third read should be done",
       );
       await reader.closed;
     });
@@ -197,7 +213,7 @@ const badIterables = [
   ["null", null],
   ["undefined", undefined],
   ["0", 0],
-  ["NaN", NaN],
+  ["NaN", Number.NaN],
   ["true", true],
   ["{}", {}],
   ["Object.create(null)", Object.create(null)],
@@ -217,20 +233,20 @@ const badIterables = [
   ],
 ];
 
-describe("fromIterable throws on invalid iterables", () => {
+describe("fromAnyIterable throws on invalid iterables", () => {
   for (const [label, iterable] of badIterables) {
-    test(`fromIterable throws on invalid iterables; specifically ${label}`, () => {
+    test(`fromAnyIterable throws on invalid iterables; specifically ${label}`, () => {
       assert.throw(
-        () => fromIterable(iterable),
+        () => fromAnyIterable(iterable),
         TypeError,
         undefined,
-        "fromIterable() should throw a TypeError"
+        "fromAnyIterable() should throw a TypeError",
       );
     });
   }
 });
 
-test("fromIterable re-throws errors from calling the @@iterator method", () => {
+test("fromAnyIterable re-throws errors from calling the @@iterator method", () => {
   const theError = new Error("a unique string");
   const iterable = {
     [Symbol.iterator]() {
@@ -239,14 +255,14 @@ test("fromIterable re-throws errors from calling the @@iterator method", () => {
   };
 
   assert.throw(
-    () => fromIterable(iterable),
+    () => fromAnyIterable(iterable),
     theError,
     "a unique string",
-    "fromIterable() should re-throw the error"
+    "fromAnyIterable() should re-throw the error",
   );
 });
 
-test("fromIterable re-throws errors from calling the @@asyncIterator method", () => {
+test("fromAnyIterable re-throws errors from calling the @@asyncIterator method", () => {
   const theError = new Error("a unique string");
   const iterable = {
     [Symbol.asyncIterator]() {
@@ -255,14 +271,14 @@ test("fromIterable re-throws errors from calling the @@asyncIterator method", ()
   };
 
   assert.throw(
-    () => fromIterable(iterable),
+    () => fromAnyIterable(iterable),
     theError,
     "a unique string",
-    "fromIterable() should re-throw the error"
+    "fromAnyIterable() should re-throw the error",
   );
 });
 
-test("fromIterable ignores @@iterator if @@asyncIterator exists", () => {
+test("fromAnyIterable ignores @@iterator if @@asyncIterator exists", () => {
   const theError = new Error("a unique string");
   let reached = false;
   const iterable = {
@@ -275,16 +291,16 @@ test("fromIterable ignores @@iterator if @@asyncIterator exists", () => {
   };
 
   assert.throw(
-    () => fromIterable(iterable),
+    () => fromAnyIterable(iterable),
     theError,
     "a unique string",
-    "fromIterable() should re-throw the error"
+    "fromAnyIterable() should re-throw the error",
   );
 
   assert.isFalse(reached);
 });
 
-test("fromIterable accepts an empty iterable", async () => {
+test("fromAnyIterable accepts an empty iterable", async () => {
   const iterable = {
     async next() {
       return { value: undefined, done: true };
@@ -292,20 +308,20 @@ test("fromIterable accepts an empty iterable", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable);
+  const rs = fromAnyIterable(iterable);
   const reader = rs.getReader();
 
   const read = await reader.read();
   assert.deepEqual(
     read,
     { value: undefined, done: true },
-    "first read should be done"
+    "first read should be done",
   );
 
   await reader.closed;
 });
 
-test("fromIterable: stream errors when next() rejects", async () => {
+test("fromAnyIterable: stream errors when next() rejects", async () => {
   const theError = new Error("a unique string");
 
   const iterable = {
@@ -315,7 +331,7 @@ test("fromIterable: stream errors when next() rejects", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable);
+  const rs = fromAnyIterable(iterable);
   const reader = rs.getReader();
 
   const rejectedPromises = await Promise.allSettled([
@@ -326,17 +342,17 @@ test("fromIterable: stream errors when next() rejects", async () => {
   assert.strictEqual(rejectedPromises[0].status, "rejected");
   assert.strictEqual(
     (rejectedPromises[0] as PromiseRejectedResult).reason,
-    theError
+    theError,
   );
 
   assert.strictEqual(rejectedPromises[1].status, "rejected");
   assert.strictEqual(
     (rejectedPromises[1] as PromiseRejectedResult).reason,
-    theError
+    theError,
   );
 });
 
-test("fromIterable: stream stalls when next() never settles", async () => {
+test("fromAnyIterable: stream stalls when next() never settles", async () => {
   const iterable = {
     next() {
       return new Promise(() => {
@@ -346,18 +362,26 @@ test("fromIterable: stream stalls when next() never settles", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as AsyncIterable<unknown>);
+  const rs = fromAnyIterable(iterable as AsyncIterable<unknown>);
   const reader = rs.getReader();
 
   const reachFlag = [false, false, false, false];
   await Promise.race([
     reader.read().then(
-      () => (reachFlag[0] = true),
-      () => (reachFlag[1] = true)
+      () => {
+        reachFlag[0] = true;
+      },
+      () => {
+        reachFlag[1] = true;
+      },
     ),
     reader.closed.then(
-      () => (reachFlag[2] = true),
-      () => (reachFlag[3] = true)
+      () => {
+        reachFlag[2] = true;
+      },
+      () => {
+        reachFlag[3] = true;
+      },
     ),
     flushAsyncEvents(),
   ]);
@@ -368,7 +392,7 @@ test("fromIterable: stream stalls when next() never settles", async () => {
   assert.isFalse(reachFlag[3], "closed should not reject");
 });
 
-test("fromIterable: calls next() after first read()", async () => {
+test("fromAnyIterable: calls next() after first read()", async () => {
   let nextCalls = 0;
   let nextArgs: unknown[] | undefined;
   const iterable = {
@@ -380,7 +404,7 @@ test("fromIterable: calls next() after first read()", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable);
+  const rs = fromAnyIterable(iterable);
   const reader = rs.getReader();
 
   await flushAsyncEvents();
@@ -391,17 +415,17 @@ test("fromIterable: calls next() after first read()", async () => {
   assert.deepEqual(
     read,
     { value: "a", done: false },
-    "first read should be correct"
+    "first read should be correct",
   );
   assert.strictEqual(
     nextCalls,
     1,
-    "next() should be called after first read()"
+    "next() should be called after first read()",
   );
   assert.deepEqual(nextArgs, [], "next() should be called with no arguments");
 });
 
-test("fromIterable: cancelling the returned stream calls and awaits return()", async () => {
+test("fromAnyIterable: cancelling the returned stream calls and awaits return()", async () => {
   const theError = new Error("a unique string");
 
   let returnCalls = 0;
@@ -410,18 +434,24 @@ test("fromIterable: cancelling the returned stream calls and awaits return()", a
   let reached1 = false;
   let reached2 = false;
   const iterable = {
-    next: () => (reached1 = true),
-    throw: () => (reached2 = true),
+    next: () => {
+      reached1 = true;
+    },
+    throw: () => {
+      reached2 = true;
+    },
     async return(...args: unknown[]): Promise<IteratorReturnResult<undefined>> {
       returnCalls += 1;
       returnArgs = args;
-      await new Promise((r) => (resolveReturn = r));
+      await new Promise((r) => {
+        resolveReturn = r;
+      });
       return { done: true, value: undefined };
     },
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as unknown as AsyncIterable<unknown>);
+  const rs = fromAnyIterable(iterable as unknown as AsyncIterable<unknown>);
   const reader = rs.getReader();
   assert.strictEqual(returnCalls, 0, "return() should not be called yet");
 
@@ -435,21 +465,20 @@ test("fromIterable: cancelling the returned stream calls and awaits return()", a
   assert.deepEqual(
     returnArgs,
     [theError],
-    "return() should be called with cancel reason"
+    "return() should be called with cancel reason",
   );
   assert.isFalse(
     cancelResolved,
-    "cancel() should not resolve while promise from return() is pending"
+    "cancel() should not resolve while promise from return() is pending",
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   (resolveReturn as (value?: unknown) => void)();
   await Promise.all([cancelPromise, reader.closed]);
   assert.isFalse(reached1, "next() should not be called");
   assert.isFalse(reached2, "throw() should not be called");
 });
 
-test("fromIterable: return() is not called when iterator completes normally", async () => {
+test("fromAnyIterable: return() is not called when iterator completes normally", async () => {
   let nextCalls = 0;
   let returnCalls = 0;
 
@@ -468,14 +497,14 @@ test("fromIterable: return() is not called when iterator completes normally", as
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as unknown as AsyncIterable<undefined>);
+  const rs = fromAnyIterable(iterable as unknown as AsyncIterable<undefined>);
   const reader = rs.getReader();
 
   const read = await reader.read();
   assert.deepEqual(
     read,
     { value: undefined, done: true },
-    "first read should be done"
+    "first read should be done",
   );
   assert.strictEqual(nextCalls, 1, "next() should be called once");
 
@@ -485,21 +514,25 @@ test("fromIterable: return() is not called when iterator completes normally", as
   assert.isFalse(reached);
 });
 
-test("fromIterable: cancel() rejects when return() fulfills with a non-object", async () => {
+test("fromAnyIterable: cancel() rejects when return() fulfills with a non-object", async () => {
   const theError = new Error("a unique string");
 
   let reached1 = false;
   let reached2 = false;
   const iterable = {
-    next: () => (reached1 = true),
-    throw: () => (reached2 = true),
+    next: () => {
+      reached1 = true;
+    },
+    throw: () => {
+      reached2 = true;
+    },
     async return() {
       return 42;
     },
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as unknown as AsyncIterable<unknown>);
+  const rs = fromAnyIterable(iterable as unknown as AsyncIterable<unknown>);
   const reader = rs.getReader();
 
   let reached3 = false;
@@ -515,7 +548,7 @@ test("fromIterable: cancel() rejects when return() fulfills with a non-object", 
   assert.isFalse(reached3, "cancel() should not be fullfilled");
 });
 
-test("fromIterable: reader.read() inside next()", async () => {
+test("fromAnyIterable: reader.read() inside next()", async () => {
   let nextCalls = 0;
   let reader: ReadableStreamDefaultReader<string | undefined> | undefined =
     undefined;
@@ -532,14 +565,14 @@ test("fromIterable: reader.read() inside next()", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable);
+  const rs = fromAnyIterable(iterable);
   reader = rs.getReader();
 
   const read1 = await reader.read();
   assert.deepEqual(
     read1,
     { value: "a", done: false },
-    "first read should be correct"
+    "first read should be correct",
   );
   await flushAsyncEvents();
   assert.strictEqual(nextCalls, 2, "next() should be called two times");
@@ -548,12 +581,12 @@ test("fromIterable: reader.read() inside next()", async () => {
   assert.deepEqual(
     read2,
     { value: "c", done: false },
-    "second read should be correct"
+    "second read should be correct",
   );
   assert.strictEqual(nextCalls, 3, "next() should be called three times");
 });
 
-test("fromIterable: reader.cancel() inside next()", async () => {
+test("fromAnyIterable: reader.cancel() inside next()", async () => {
   let nextCalls = 0;
   let returnCalls = 0;
   let reader: ReadableStreamDefaultReader<string> | undefined = undefined;
@@ -571,27 +604,29 @@ test("fromIterable: reader.cancel() inside next()", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as unknown as AsyncIterable<string>);
+  const rs = fromAnyIterable(iterable as unknown as AsyncIterable<string>);
   reader = rs.getReader();
 
   const read = await reader.read();
   assert.deepEqual(
     read,
     { value: undefined, done: true },
-    "first read should be done"
+    "first read should be done",
   );
   assert.strictEqual(nextCalls, 1, "next() should be called once");
 
   await reader.closed;
 });
 
-test("fromIterable: reader.cancel() inside return()", async () => {
+test("fromAnyIterable: reader.cancel() inside return()", async () => {
   let returnCalls = 0;
   let reader: ReadableStreamDefaultReader<unknown> | undefined = undefined;
 
   let reached = false;
   const iterable = {
-    next: () => (reached = true),
+    next: () => {
+      reached = true;
+    },
     async return() {
       returnCalls++;
       await (reader as ReadableStreamDefaultReader<unknown>).cancel();
@@ -600,7 +635,7 @@ test("fromIterable: reader.cancel() inside return()", async () => {
     [Symbol.asyncIterator]: () => iterable,
   };
 
-  const rs = fromIterable(iterable as unknown as AsyncIterable<unknown>);
+  const rs = fromAnyIterable(iterable as unknown as AsyncIterable<unknown>);
   reader = rs.getReader();
 
   await reader.cancel();
@@ -610,23 +645,23 @@ test("fromIterable: reader.cancel() inside return()", async () => {
   assert.isFalse(reached, "next() should not be called");
 });
 
-test("fromIterable(array), push() to array while reading", async () => {
+test("fromAnyIterable(array), push() to array while reading", async () => {
   const array = ["a", "b"];
 
-  const rs = fromIterable(array);
+  const rs = fromAnyIterable(array);
   const reader = rs.getReader();
 
   const read1 = await reader.read();
   assert.deepEqual(
     read1,
     { value: "a", done: false },
-    "first read should be correct"
+    "first read should be correct",
   );
   const read2 = await reader.read();
   assert.deepEqual(
     read2,
     { value: "b", done: false },
-    "second read should be correct"
+    "second read should be correct",
   );
 
   array.push("c");
@@ -635,14 +670,49 @@ test("fromIterable(array), push() to array while reading", async () => {
   assert.deepEqual(
     read3,
     { value: "c", done: false },
-    "third read after push() should be correct"
+    "third read after push() should be correct",
   );
   const read4 = await reader.read();
   assert.deepEqual(
     read4,
     { value: undefined, done: true },
-    "fourth read should be done"
+    "fourth read should be done",
   );
 
+  await reader.closed;
+});
+
+test("fromAnyIterable: polyfill", async () => {
+  const array = ["a", "b"];
+  delete (ReadableStream as { from?: unknown }).from;
+  await import("../src/polyfill/fromAnyIterable.js");
+  assumeAs<
+    typeof ReadableStream & {
+      from: typeof fromAnyIterable;
+    }
+  >(ReadableStream);
+  const rs = ReadableStream.from(array);
+  assert.strictEqual(
+    rs.constructor,
+    ReadableStream,
+    "fromAnyIterable() should return a ReadableStream",
+  );
+
+  const reader = rs.getReader();
+  assert.deepEqual(
+    await reader.read(),
+    { value: "a", done: false },
+    "first read should be correct",
+  );
+  assert.deepEqual(
+    await reader.read(),
+    { value: "b", done: false },
+    "second read should be correct",
+  );
+  assert.deepEqual(
+    await reader.read(),
+    { value: undefined, done: true },
+    "third read should be done",
+  );
   await reader.closed;
 });

@@ -1,12 +1,12 @@
 /**
  * The following tests are copied from
- * https://github.com/MattiasBuelens/wpt/blob/c894f0086c99ab5efc37691ac60f33a2b37c2e7c/streams/readable-streams/async-iterator.any.js
+ * https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/async-iterator.any.js
  * and rewritten for Vitest
  */
 
-import { test, assert, describe } from "vitest";
-import { flushAsyncEvents } from "./utils";
-import { AsyncIterablePrototype } from "../src/asyncIterablePrototype";
+import { assert, describe, test } from "vitest";
+import { AsyncIterablePrototype } from "../src/core/asyncIterablePrototype.js";
+import { flushAsyncEvents } from "./utils.js";
 
 // remove possibly already implemented polyfills or apis
 delete (ReadableStream.prototype as Partial<ReadableStream>).values;
@@ -15,7 +15,7 @@ delete (ReadableStream.prototype as Partial<ReadableStream>)[
 ];
 
 // import this polyfill
-await import("../src/asyncIteration");
+await import("../src/polyfill/asyncIterator.js");
 
 const error1 = new Error("error1");
 
@@ -27,19 +27,19 @@ test("Async iterator instances should have the correct list of properties", asyn
   assert.strictEqual(
     Object.getPrototypeOf(proto),
     AsyncIterablePrototype,
-    "prototype should extend AsyncIterablePrototype"
+    "prototype should extend AsyncIterablePrototype",
   );
   const methods = ["next", "return"].sort();
   assert.deepEqual(
     Object.getOwnPropertyNames(proto).sort(),
     methods,
-    "should have all the correct methods"
+    "should have all the correct methods",
   );
 
   for (const m of methods) {
     const propDesc = Object.getOwnPropertyDescriptor(
       proto,
-      m
+      m,
     ) as PropertyDescriptor;
     assert.isTrue(propDesc.enumerable, "method should be enumerable");
     assert.isTrue(propDesc.configurable, "method should be configurable");
@@ -137,7 +137,7 @@ test("Async-iterating a pull source manually", async () => {
         i += 1;
       },
     },
-    new CountQueuingStrategy({ highWaterMark: 0 })
+    new CountQueuingStrategy({ highWaterMark: 0 }),
   );
 
   const it = s.values();
@@ -168,7 +168,6 @@ test("Async-iterating an errored stream throws", async () => {
   });
   let reached = false;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _ of s) {
       /* empty */
     }
@@ -188,7 +187,6 @@ test("Async-iterating a closed stream never executes the loop body, but works fi
 
   let reached = false;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for await (const _ of s) {
     reached = true;
   }
@@ -202,7 +200,6 @@ test("Async-iterating an empty but not closed/errored stream never executes the 
   let reached2 = false;
 
   const loop = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _ of s) {
       reached1 = true;
     }
@@ -249,13 +246,14 @@ describe("Cancellation behavior", () => {
 
           // use a separate function for the loop body so return does not stop the test
           const loop = async () => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for await (const _ of s.values({ preventCancel })) {
               if (type === "throw") {
                 throw new Error();
-              } else if (type === "break") {
+              }
+              if (type === "break") {
                 break;
-              } else if (type === "return") {
+              }
+              if (type === "return") {
                 return;
               }
             }
@@ -271,13 +269,13 @@ describe("Cancellation behavior", () => {
             assert.deepEqual(
               s.events,
               ["pull"],
-              "cancel() should not be called"
+              "cancel() should not be called",
             );
           } else {
             assert.deepEqual(
               s.events,
               ["pull", "cancel", undefined],
-              "cancel() should be called"
+              "cancel() should be called",
             );
           }
         });
@@ -303,7 +301,7 @@ describe("Cancellation behavior", () => {
           assert.deepEqual(
             s.events,
             ["cancel", undefined],
-            "cancel() should be called"
+            "cancel() should be called",
           );
         }
       });
@@ -437,38 +435,38 @@ test("next() that succeeds; next() that reports an error; next() [no awaiting]",
   assert.strictEqual(
     iterResults[0].status,
     "fulfilled",
-    "1st next() promise status"
+    "1st next() promise status",
   );
   assertIterResult(
     (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     0,
     false,
-    "1st next()"
+    "1st next()",
   );
 
   assert.strictEqual(
     iterResults[1].status,
     "rejected",
-    "2nd next() promise status"
+    "2nd next() promise status",
   );
   assert.strictEqual(
     (iterResults[1] as PromiseRejectedResult).reason,
     error1,
-    "2nd next() rejection reason"
+    "2nd next() rejection reason",
   );
 
   assert.strictEqual(
     iterResults[2].status,
     "fulfilled",
-    "3rd next() promise status"
+    "3rd next() promise status",
   );
   assertIterResult(
     (iterResults[2] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     undefined,
     true,
-    "3rd next()"
+    "3rd next()",
   );
 });
 
@@ -530,38 +528,38 @@ test("next() that succeeds; next() that reports an error; return() [no awaiting]
   assert.strictEqual(
     iterResults[0].status,
     "fulfilled",
-    "1st next() promise status"
+    "1st next() promise status",
   );
   assertIterResult(
     (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     0,
     false,
-    "1st next()"
+    "1st next()",
   );
 
   assert.strictEqual(
     iterResults[1].status,
     "rejected",
-    "2nd next() promise status"
+    "2nd next() promise status",
   );
   assert.strictEqual(
     (iterResults[1] as PromiseRejectedResult).reason,
     error1,
-    "2nd next() rejection reason"
+    "2nd next() rejection reason",
   );
 
   assert.strictEqual(
     iterResults[2].status,
     "fulfilled",
-    "return() promise status"
+    "return() promise status",
   );
   assertIterResult(
     (iterResults[2] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     "return value",
     true,
-    "return()"
+    "return()",
   );
 });
 
@@ -605,27 +603,27 @@ test("next() that succeeds; return() [no awaiting]", async () => {
   assert.strictEqual(
     iterResults[0].status,
     "fulfilled",
-    "next() promise status"
+    "next() promise status",
   );
   assertIterResult(
     (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     0,
     false,
-    "next()"
+    "next()",
   );
 
   assert.strictEqual(
     iterResults[1].status,
     "fulfilled",
-    "return() promise status"
+    "return() promise status",
   );
   assertIterResult(
     (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     "return value",
     true,
-    "return()"
+    "return()",
   );
 
   assert.strictEqual(timesPulled, 2);
@@ -657,27 +655,27 @@ test("return(); next() [no awaiting]", async () => {
   assert.strictEqual(
     iterResults[0].status,
     "fulfilled",
-    "return() promise status"
+    "return() promise status",
   );
   assertIterResult(
     (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     "return value",
     true,
-    "return()"
+    "return()",
   );
 
   assert.strictEqual(
     iterResults[1].status,
     "fulfilled",
-    "next() promise status"
+    "next() promise status",
   );
   assertIterResult(
     (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     undefined,
     true,
-    "next()"
+    "next()",
   );
 });
 
@@ -710,27 +708,27 @@ test("return(); return() [no awaiting]", async () => {
   assert.strictEqual(
     iterResults[0].status,
     "fulfilled",
-    "1st return() promise status"
+    "1st return() promise status",
   );
   assertIterResult(
     (iterResults[0] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     "return value 1",
     true,
-    "1st return()"
+    "1st return()",
   );
 
   assert.strictEqual(
     iterResults[1].status,
     "fulfilled",
-    "2nd return() promise status"
+    "2nd return() promise status",
   );
   assertIterResult(
     (iterResults[1] as PromiseFulfilledResult<IteratorResult<unknown, unknown>>)
       .value,
     "return value 2",
     true,
-    "1st return()"
+    "1st return()",
   );
 });
 
@@ -808,7 +806,7 @@ test("Acquiring a reader after returning from a stream that errors", async () =>
     assert.strictEqual(
       e,
       error1,
-      "closed on the new reader should reject with the error"
+      "closed on the new reader should reject with the error",
     );
   }
   assert.isFalse(reached2);
@@ -898,7 +896,7 @@ test("close() while next() is pending", async () => {
 
 function recordingReadableStream<R>(
   extras: UnderlyingDefaultSource<R> = {},
-  strategy?: CountQueuingStrategy
+  strategy?: CountQueuingStrategy,
 ) {
   interface ExposedRecords {
     events: unknown[];
@@ -938,7 +936,7 @@ function recordingReadableStream<R>(
         return undefined;
       },
     },
-    strategy
+    strategy,
   ) as ReadableStream<R> & ExposedRecords;
 
   stream.controller =
@@ -953,19 +951,19 @@ function assertIterResult<R>(
   iterResult: IteratorResult<R, unknown>,
   value: R,
   done: boolean,
-  message?: string
+  message?: string,
 ) {
   const prefix = message === undefined ? "" : `${message} `;
   assert.strictEqual(typeof iterResult, "object", `${prefix}type is object`);
   assert.strictEqual(
     Object.getPrototypeOf(iterResult),
     Object.prototype,
-    `${prefix}[[Prototype]]`
+    `${prefix}[[Prototype]]`,
   );
   assert.deepEqual(
     Object.getOwnPropertyNames(iterResult).sort(),
     ["done", "value"],
-    `${prefix}property names`
+    `${prefix}property names`,
   );
   assert.strictEqual(iterResult.value, value, `${prefix}value`);
   assert.strictEqual(iterResult.done, done, `${prefix}done`);

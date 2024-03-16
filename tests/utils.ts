@@ -18,3 +18,7 @@ export async function flushAsyncEvents() {
   await delay(0);
   return await delay(0);
 }
+
+export function assumeAs<T>(_: unknown): asserts _ is T {
+  /* void */
+}
