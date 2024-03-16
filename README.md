@@ -50,7 +50,7 @@ import {
   type ReadableStreamIteratorOptions,
 } from "@sec-ant/readable-stream/ponyfill/asyncIterator";
 
-const readableStream = await fetch("https://www.example.org/").body;
+const readableStream = (await fetch("https://www.example.org/")).body;
 
 let total = 0;
 for await (const chunk of asyncIterator.call(readableStream)) {
@@ -113,7 +113,7 @@ Example:
 ```ts
 import "@sec-ant/readable-stream/polyfill/asyncIterator";
 
-const readableStream = await fetch("https://www.example.org/").body;
+const readableStream = (await fetch("https://www.example.org/")).body;
 
 let total = 0;
 for await (const chunk of readableStream) {
