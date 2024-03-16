@@ -2,7 +2,7 @@
   "name": "@sec-ant/readable-stream",
   "description": "A tiny, zero-dependency yet spec-compliant asynchronous iterator polyfill/ponyfill for ReadableStreams.",
   "private": false,
-  "version": "0.3.2",
+  "version": "0.4.0",
   "type": "module",
   "files": ["./dist"],
   "main": "./dist/index.js",
