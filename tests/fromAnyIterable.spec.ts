@@ -1,6 +1,6 @@
 /**
  * The following tests are copied from
- * https://github.com/MattiasBuelens/wpt/blob/38c4fcee35b5376eac4cf037d9ca1f8343cf06e4/streams/readable-streams/from.any.js
+ * https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/from.any.js
  * and rewritten for Vitest
  */
 

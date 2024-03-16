@@ -1,6 +1,6 @@
 /**
  * The following tests are copied from
- * https://github.com/MattiasBuelens/wpt/blob/c894f0086c99ab5efc37691ac60f33a2b37c2e7c/streams/readable-streams/async-iterator.any.js
+ * https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/async-iterator.any.js
  * and rewritten for Vitest
  */
 

@@ -11,14 +11,14 @@ A tiny, zero-dependency yet spec-compliant asynchronous iterator polyfill/ponyfi
 With this package, you can consume a `ReadableStream` as an `AsyncIterable`.
 
 - spec: https://streams.spec.whatwg.org/#rs-asynciterator
-- tests: https://github.com/Sec-ant/readable-stream/blob/main/tests/asyncIterator.spec.ts (copied from [wpt](https://github.com/web-platform-tests/wpt/blame/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/async-iterator.any.js))
+- tests: https://github.com/Sec-ant/readable-stream/blob/main/tests/asyncIterator.spec.ts (copied from [wpt](https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/async-iterator.any.js))
 
 ### Convert an `AsyncIterable` or an `Iterable` into a `ReadableStream`
 
 With this package, you can construct a `ReadableStream` from an `AsyncIterable` or an `Iterable`.
 
 - spec: https://streams.spec.whatwg.org/#rs-from
-- tests: https://github.com/Sec-ant/readable-stream/blob/main/tests/fromAnyIterable.spec.ts (copied from [wpt](https://github.com/web-platform-tests/wpt/blame/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/from.any.js))
+- tests: https://github.com/Sec-ant/readable-stream/blob/main/tests/fromAnyIterable.spec.ts (copied from [wpt](https://github.com/web-platform-tests/wpt/blob/309231a7f3e900d04914bc4963b016efd9989a00/streams/readable-streams/from.any.js))
 
 This package passes all the aforementioned tests.
 
