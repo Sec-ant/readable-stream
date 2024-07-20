@@ -53,7 +53,7 @@ import {
 const readableStream = (await fetch("https://www.example.org/")).body;
 
 let total = 0;
-for await (const chunk of asyncIterator.call(readableStream)) {
+for await (const chunk of asyncIterator(readableStream)) {
   total += chunk.length;
 }
 
