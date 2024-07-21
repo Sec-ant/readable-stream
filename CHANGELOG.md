@@ -1,5 +1,23 @@
 # @sec-ant/readable-stream
 
+## 0.5.0
+
+### Minor Changes
+
+- 7cb5954: Refactor `asyncIterator` ponyfill API
+
+  **BREAKING**: The `asyncIterator` from the ponyfill API is refactored, you should now use it like this:
+
+  ```ts
+  asyncIterator(readableStream);
+  ```
+
+  instead of
+
+  ```ts
+  asyncIterator.call(readableStream);
+  ```
+
 ## 0.4.1
 
 ### Patch Changes
