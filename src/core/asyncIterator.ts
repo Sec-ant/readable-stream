@@ -147,15 +147,15 @@ export interface ReadableStreamIteratorOptions {
 
 /**
  * Get an async iterable iterator from a readable stream
- * @param this
+ * @param readableStream
  * @param readableStreamIteratorOptions
  * @returns
  */
 export function asyncIterator<R, TReturn>(
-  this: ReadableStream<R>,
+  readableStream: ReadableStream<R>,
   { preventCancel = false }: ReadableStreamIteratorOptions = {},
 ) {
-  const reader = this.getReader();
+  const reader = readableStream.getReader();
   const implement = new ReadableStreamAsyncIterableIteratorImpl<R, TReturn>(
     reader,
     preventCancel,
