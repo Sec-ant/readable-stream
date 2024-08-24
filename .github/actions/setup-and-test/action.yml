@@ -4,19 +4,23 @@ description: Setup environments and run tests
 runs:
   using: composite
   steps:
+    - name: Setup PNPM
+      uses: pnpm/action-setup@v4
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version-file: .node-version
+        cache: pnpm
 
     - name: Install Dependencies
       shell: bash
-      run: npm ci
+      run: pnpm i
 
     - name: Install Playwright Browsers
       shell: bash
-      run: npx playwright install --with-deps
+      run: pnpm -s playwright install --with-deps
 
     - name: Run tests
       shell: bash
-      run: npm run test
+      run: pnpm -s test

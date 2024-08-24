@@ -4,7 +4,9 @@
   "private": false,
   "version": "0.5.0",
   "type": "module",
-  "files": ["./dist"],
+  "files": [
+    "./dist"
+  ],
   "main": "./dist/index/index.js",
   "module": "./dist/index/index.js",
   "exports": {
@@ -52,43 +54,42 @@
   },
   "scripts": {
     "update-hooks": "simple-git-hooks",
-    "changeset": "changeset",
-    "bump": "changeset version 2>/dev/null | grep . && npm i; exit 0",
     "type-check": "tsc --noEmit --emitDeclarationOnly false",
     "format:prettier": "prettier . --write",
     "format:biome": "biome format . --write",
     "format": "conc \"npm:format:prettier\" \"npm:format:biome\"",
     "check:biome": "biome check --write .",
     "check": "conc \"npm:format:prettier\" \"npm:check:biome\"",
-    "prebuild": "npm run check && npm run type-check",
+    "prebuild": "pnpm -s check && pnpm -s type-check",
     "build": "vite build",
     "copy": "copy-files-from-to",
-    "postbuild": "tsc && npm run copy",
+    "postbuild": "tsc && pnpm -s copy",
     "test:chromium": "vitest run --browser.name=chromium",
     "test:firefox": "vitest run --browser.name=firefox",
-    "test": "npm run test:chromium && npm run test:firefox",
+    "test": "pnpm -s test:chromium && pnpm -s test:firefox",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
-    "prepublishOnly": "npm run build",
-    "bump-biome:latest": "npm i -DE @biomejs/biome@latest",
-    "bump-biome:nightly": "npm i -DE @biomejs/biome@nightly"
+    "prepublishOnly": "pnpm -s build",
+    "bump-biome:latest": "pnpm add -DE @biomejs/biome@latest",
+    "bump-biome:nightly": "pnpm add -DE @biomejs/biome@nightly"
   },
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
     "@changesets/cli": "^2.27.7",
-    "@commitlint/cli": "^19.3.0",
+    "@commitlint/cli": "^19.4.0",
     "@commitlint/config-conventional": "^19.2.2",
-    "@vitest/browser": "^2.0.3",
-    "@vitest/coverage-istanbul": "^2.0.3",
-    "@vitest/ui": "^2.0.3",
+    "@vitest/browser": "^2.0.5",
+    "@vitest/coverage-istanbul": "^2.0.5",
+    "@vitest/ui": "^2.0.5",
     "concurrently": "^8.2.2",
     "copy-files-from-to": "^3.11.0",
-    "lint-staged": "^15.2.7",
-    "playwright": "^1.45.2",
+    "lint-staged": "^15.2.9",
+    "playwright": "^1.46.1",
     "prettier": "^3.3.3",
     "simple-git-hooks": "^2.11.1",
-    "typescript": "^5.5.3",
-    "vite": "^5.3.4",
-    "vitest": "^2.0.3"
-  }
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.0.5"
+  },
+  "packageManager": "pnpm@9.8.0+sha512.8e4c3550fb500e808dbc30bb0ce4dd1eb614e30b1c55245f211591ec2cdf9c611cabd34e1364b42f564bd54b3945ed0f49d61d1bbf2ec9bd74b866fcdc723276"
 }

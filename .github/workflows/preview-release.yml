@@ -17,12 +17,10 @@ jobs:
         uses: ./.github/actions/setup-and-test
 
       - name: Bump Version
-        run: npm run bump
+        run: pnpm -s changeset version
 
       - name: Build
-        run: npm run prepublishOnly
+        run: pnpm -s prepublishOnly
 
       - name: Publish Preview Release
-        run: npx pkg-pr-new publish --compact
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpx pkg-pr-new publish --compact
