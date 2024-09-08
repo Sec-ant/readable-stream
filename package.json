@@ -81,7 +81,7 @@
     "@vitest/browser": "^2.0.5",
     "@vitest/coverage-istanbul": "^2.0.5",
     "@vitest/ui": "^2.0.5",
-    "concurrently": "^8.2.2",
+    "concurrently": "^9.0.0",
     "copy-files-from-to": "^3.11.0",
     "lint-staged": "^15.2.9",
     "playwright": "^1.46.1",
