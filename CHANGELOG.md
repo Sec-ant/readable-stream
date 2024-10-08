@@ -1,5 +1,11 @@
 # @sec-ant/readable-stream
 
+## 0.6.0
+
+### Minor Changes
+
+- 3b16e97: Update iterator-related types to cope with typescript 5.6 changes. See [this writeup](<https://devblogs.microsoft.com/typescript/announcing-typescript-5-6/#strict-builtin-iterator-checks-(and---strictbuiltiniteratorreturn)>) and [this PR](https://github.com/microsoft/TypeScript/pull/58243).
+
 ## 0.5.0
 
 ### Minor Changes
