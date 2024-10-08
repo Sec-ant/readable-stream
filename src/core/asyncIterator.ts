@@ -90,7 +90,7 @@ const implementSymbol = Symbol();
  * declare `ReadableStreamAsyncIterableIterator` interaface
  */
 interface ReadableStreamAsyncIterableIterator<R, TReturn>
-  extends AsyncIterableIterator<R> {
+  extends ReadableStreamAsyncIterator<R> {
   [implementSymbol]: ReadableStreamAsyncIterableIteratorImpl<R, TReturn>;
 }
 
