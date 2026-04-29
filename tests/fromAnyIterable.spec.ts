@@ -550,8 +550,7 @@ test("fromAnyIterable: cancel() rejects when return() fulfills with a non-object
 
 test("fromAnyIterable: reader.read() inside next()", async () => {
   let nextCalls = 0;
-  let reader: ReadableStreamDefaultReader<string | undefined> | undefined =
-    undefined;
+  let reader: ReadableStreamDefaultReader<string | undefined> | undefined;
   const values: string[] = ["a", "b", "c"];
 
   const iterable = {
@@ -567,8 +566,9 @@ test("fromAnyIterable: reader.read() inside next()", async () => {
 
   const rs = fromAnyIterable(iterable);
   reader = rs.getReader();
+  const r = reader;
 
-  const read1 = await reader.read();
+  const read1 = await r.read();
   assert.deepEqual(
     read1,
     { value: "a", done: false },
@@ -577,7 +577,7 @@ test("fromAnyIterable: reader.read() inside next()", async () => {
   await flushAsyncEvents();
   assert.strictEqual(nextCalls, 2, "next() should be called two times");
 
-  const read2 = await reader.read();
+  const read2 = await r.read();
   assert.deepEqual(
     read2,
     { value: "c", done: false },
@@ -589,7 +589,7 @@ test("fromAnyIterable: reader.read() inside next()", async () => {
 test("fromAnyIterable: reader.cancel() inside next()", async () => {
   let nextCalls = 0;
   let returnCalls = 0;
-  let reader: ReadableStreamDefaultReader<string> | undefined = undefined;
+  let reader: ReadableStreamDefaultReader<string> | undefined;
 
   const iterable = {
     async next() {
@@ -606,8 +606,9 @@ test("fromAnyIterable: reader.cancel() inside next()", async () => {
 
   const rs = fromAnyIterable(iterable as unknown as AsyncIterable<string>);
   reader = rs.getReader();
+  const r = reader;
 
-  const read = await reader.read();
+  const read = await r.read();
   assert.deepEqual(
     read,
     { value: undefined, done: true },
@@ -615,12 +616,12 @@ test("fromAnyIterable: reader.cancel() inside next()", async () => {
   );
   assert.strictEqual(nextCalls, 1, "next() should be called once");
 
-  await reader.closed;
+  await r.closed;
 });
 
 test("fromAnyIterable: reader.cancel() inside return()", async () => {
   let returnCalls = 0;
-  let reader: ReadableStreamDefaultReader<unknown> | undefined = undefined;
+  let reader: ReadableStreamDefaultReader<unknown> | undefined;
 
   let reached = false;
   const iterable = {
@@ -637,11 +638,12 @@ test("fromAnyIterable: reader.cancel() inside return()", async () => {
 
   const rs = fromAnyIterable(iterable as unknown as AsyncIterable<unknown>);
   reader = rs.getReader();
+  const r = reader;
 
-  await reader.cancel();
+  await r.cancel();
   assert.strictEqual(returnCalls, 1, "return() should be called once");
 
-  await reader.closed;
+  await r.closed;
   assert.isFalse(reached, "next() should not be called");
 });
 

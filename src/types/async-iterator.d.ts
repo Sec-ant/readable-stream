@@ -1,4 +1,5 @@
 import type { ReadableStreamIteratorOptions } from "../core/asyncIterator.js";
+
 /**
  * augment global readable stream interface
  */
