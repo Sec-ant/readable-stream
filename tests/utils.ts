@@ -4,7 +4,7 @@ function stepTimeout<R>(
   ...args: R[]
 ) {
   return setTimeout(() => {
-    func.apply(this, args);
+    func(...args);
   }, timeout);
 }
 

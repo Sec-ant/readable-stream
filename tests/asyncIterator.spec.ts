@@ -44,8 +44,16 @@ test("Async iterator instances should have the correct list of properties", asyn
     assert.isTrue(propDesc.enumerable, "method should be enumerable");
     assert.isTrue(propDesc.configurable, "method should be configurable");
     assert.isTrue(propDesc.writable, "method should be writable");
-    assert.strictEqual(typeof it[m], "function", "method should be a function");
-    assert.strictEqual(it[m].name, m, "method should have the correct name");
+    assert.strictEqual(
+      typeof it[m as keyof typeof it],
+      "function",
+      "method should be a function",
+    );
+    assert.strictEqual(
+      (it[m as keyof typeof it] as { name: string }).name,
+      m,
+      "method should have the correct name",
+    );
   }
 
   assert.strictEqual(it.next.length, 0, "next should have no parameters");
@@ -261,7 +269,7 @@ describe("Cancellation behavior", () => {
 
           try {
             await loop();
-          } catch (e) {
+          } catch (_e) {
             /* empty */
           }
 
@@ -352,10 +360,9 @@ test("return() does not rejects if the stream has not errored yet", async () => 
 
   const it = s[Symbol.asyncIterator]();
 
-  const iterResult = (await it.return?.("return value")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult = (await it.return?.(
+    "return value" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult, "return value", true);
 });
 
@@ -372,7 +379,7 @@ test("return() rejects if the stream has errored", async () => {
   await flushAsyncEvents();
   let reached = false;
   try {
-    await it.return?.("return value");
+    await it.return?.("return value" as unknown as undefined);
     reached = true;
   } catch (e) {
     assert.strictEqual(e, error1);
@@ -497,10 +504,9 @@ test("next() that succeeds; next() that reports an error; return()", async () =>
   }
   assert.isFalse(reached);
 
-  const iterResult3 = (await it.return?.("return value")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult3 = (await it.return?.(
+    "return value" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult3, "return value", true, "return()");
 });
 
@@ -522,7 +528,7 @@ test("next() that succeeds; next() that reports an error; return() [no awaiting]
   const iterResults = await Promise.allSettled([
     it.next(),
     it.next(),
-    it.return?.("return value"),
+    it.return?.("return value" as unknown as undefined),
   ]);
 
   assert.strictEqual(
@@ -576,10 +582,9 @@ test("next() that succeeds; return()", async () => {
   const iterResult1 = await it.next();
   assertIterResult(iterResult1, 0, false, "next()");
 
-  const iterResult2 = (await it.return?.("return value")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult2 = (await it.return?.(
+    "return value" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult2, "return value", true, "return()");
 
   assert.strictEqual(timesPulled, 2);
@@ -597,7 +602,7 @@ test("next() that succeeds; return() [no awaiting]", async () => {
 
   const iterResults = await Promise.allSettled([
     it.next(),
-    it.return?.("return value"),
+    it.return?.("return value" as unknown as undefined),
   ]);
 
   assert.strictEqual(
@@ -633,10 +638,9 @@ test("return(); next()", async () => {
   const rs = new ReadableStream();
   const it = rs.values();
 
-  const iterResult1 = (await it.return?.("return value")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult1 = (await it.return?.(
+    "return value" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult1, "return value", true, "return()");
 
   const iterResult2 = await it.next();
@@ -648,7 +652,7 @@ test("return(); next() [no awaiting]", async () => {
   const it = rs.values();
 
   const iterResults = await Promise.allSettled([
-    it.return?.("return value"),
+    it.return?.("return value" as unknown as undefined),
     it.next(),
   ]);
 
@@ -683,16 +687,14 @@ test("return(); return()", async () => {
   const rs = new ReadableStream();
   const it = rs.values();
 
-  const iterResult1 = (await it.return?.("return value 1")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult1 = (await it.return?.(
+    "return value 1" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult1, "return value 1", true, "1st return()");
 
-  const iterResult2 = (await it.return?.("return value 2")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult2 = (await it.return?.(
+    "return value 2" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult2, "return value 2", true, "1st return()");
 });
 
@@ -701,8 +703,8 @@ test("return(); return() [no awaiting]", async () => {
   const it = rs.values();
 
   const iterResults = await Promise.allSettled([
-    it.return?.("return value 1"),
-    it.return?.("return value 2"),
+    it.return?.("return value 1" as unknown as undefined),
+    it.return?.("return value 2" as unknown as undefined),
   ]);
 
   assert.strictEqual(
@@ -790,10 +792,9 @@ test("Acquiring a reader after returning from a stream that errors", async () =>
   }
   assert.isFalse(reached1);
 
-  const iterResult2 = (await it.return?.("return value")) as IteratorResult<
-    unknown,
-    unknown
-  >;
+  const iterResult2 = (await it.return?.(
+    "return value" as unknown as undefined,
+  )) as IteratorResult<unknown, unknown>;
   assertIterResult(iterResult2, "return value", true, "return()");
 
   // i.e. it should not reject with a generic "this stream is locked" TypeError.

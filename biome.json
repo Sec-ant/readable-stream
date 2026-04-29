@@ -14,7 +14,7 @@
   },
   "overrides": [
     {
-      "include": ["*.json"],
+      "includes": ["**/*.json"],
       "json": {
         "parser": {
           "allowTrailingCommas": true
@@ -22,7 +22,7 @@
       }
     },
     {
-      "include": ["tests"],
+      "includes": ["**/tests/**"],
       "linter": {
         "rules": {
           "performance": {
@@ -32,7 +32,7 @@
       }
     },
     {
-      "include": ["package.json"],
+      "includes": ["**/package.json"],
       "json": {
         "formatter": {
           "lineWidth": 1

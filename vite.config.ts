@@ -1,3 +1,4 @@
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -19,13 +20,28 @@ export default defineConfig({
       fileName: (_, entryName) => `${entryName}.js`,
     },
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        preserveModules: true,
+        preserveModulesRoot: "src",
+        entryFileNames: "[name].js",
+      },
+    },
   },
   test: {
     browser: {
       enabled: true,
       headless: true,
-      name: "chromium",
-      provider: "playwright",
+      provider: playwright(),
+      instances: [
+        {
+          browser: "chromium",
+        },
+        {
+          browser: "firefox",
+        },
+      ],
+      screenshotFailures: false,
     },
     coverage: {
       provider: "istanbul",
