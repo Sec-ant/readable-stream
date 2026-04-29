@@ -1,5 +1,11 @@
 # @sec-ant/readable-stream
 
+## 0.6.1
+
+### Patch Changes
+
+- bd69b3e: Bump deps and switch to OIDC publishing
+
 ## 0.6.0
 
 ### Minor Changes
