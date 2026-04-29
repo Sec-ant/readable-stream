@@ -20,6 +20,13 @@ export default defineConfig({
       fileName: (_, entryName) => `${entryName}.js`,
     },
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        preserveModules: true,
+        preserveModulesRoot: "src",
+        entryFileNames: "[name].js",
+      },
+    },
   },
   test: {
     browser: {
