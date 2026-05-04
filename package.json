@@ -9,6 +9,7 @@
   ],
   "main": "./dist/index/index.js",
   "module": "./dist/index/index.js",
+  "types": "./dist/index/index.d.ts",
   "exports": {
     ".": "./dist/index/index.js",
     "./asyncIterator": "./dist/index/asyncIterator.js",
@@ -21,6 +22,37 @@
     "./polyfill/fromAnyIterable": "./dist/polyfill/fromAnyIterable.js",
     "./async-iterator": {
       "types": "./dist/types/async-iterator.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "asyncIterator": [
+        "./dist/index/asyncIterator.d.ts"
+      ],
+      "fromAnyIterable": [
+        "./dist/index/fromAnyIterable.d.ts"
+      ],
+      "ponyfill": [
+        "./dist/ponyfill/index.d.ts"
+      ],
+      "ponyfill/asyncIterator": [
+        "./dist/ponyfill/asyncIterator.d.ts"
+      ],
+      "ponyfill/fromAnyIterable": [
+        "./dist/ponyfill/fromAnyIterable.d.ts"
+      ],
+      "polyfill": [
+        "./dist/polyfill/index.d.ts"
+      ],
+      "polyfill/asyncIterator": [
+        "./dist/polyfill/asyncIterator.d.ts"
+      ],
+      "polyfill/fromAnyIterable": [
+        "./dist/polyfill/fromAnyIterable.d.ts"
+      ],
+      "async-iterator": [
+        "./dist/types/async-iterator.d.ts"
+      ]
     }
   },
   "repository": {

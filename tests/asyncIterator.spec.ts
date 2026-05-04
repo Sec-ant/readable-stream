@@ -6,18 +6,99 @@
 
 import { assert, describe, test } from "vitest";
 import { AsyncIterablePrototype } from "../src/core/asyncIterablePrototype.js";
-import { flushAsyncEvents } from "./utils.js";
+import { asyncIterator } from "../src/ponyfill/asyncIterator.js";
+import {
+  flushAsyncEvents,
+  polyfillWithExistingAsyncIterator,
+  polyfillWithExistingValues,
+} from "./utils.js";
 
-// remove possibly already implemented polyfills or apis
 delete (ReadableStream.prototype as Partial<ReadableStream>).values;
 delete (ReadableStream.prototype as Partial<ReadableStream>)[
   Symbol.asyncIterator
 ];
 
-// import this polyfill
 await import("../src/polyfill/asyncIterator.js");
 
 const error1 = new Error("error1");
+
+test("polyfill installs values and @@asyncIterator with Web IDL descriptors", () => {
+  const valuesDescriptor = Object.getOwnPropertyDescriptor(
+    ReadableStream.prototype,
+    "values",
+  ) as PropertyDescriptor;
+  const asyncIteratorDescriptor = Object.getOwnPropertyDescriptor(
+    ReadableStream.prototype,
+    Symbol.asyncIterator,
+  ) as PropertyDescriptor;
+
+  assert.strictEqual(valuesDescriptor.value, ReadableStream.prototype.values);
+  assert.isTrue(valuesDescriptor.writable, "values should be writable");
+  assert.isTrue(valuesDescriptor.enumerable, "values should be enumerable");
+  assert.isTrue(valuesDescriptor.configurable, "values should be configurable");
+
+  assert.strictEqual(
+    asyncIteratorDescriptor.value,
+    ReadableStream.prototype[Symbol.asyncIterator],
+  );
+  assert.isTrue(
+    asyncIteratorDescriptor.writable,
+    "@@asyncIterator should be writable",
+  );
+  assert.isFalse(
+    asyncIteratorDescriptor.enumerable,
+    "@@asyncIterator should not be enumerable",
+  );
+  assert.isTrue(
+    asyncIteratorDescriptor.configurable,
+    "@@asyncIterator should be configurable",
+  );
+
+  assert.strictEqual(
+    ReadableStream.prototype[Symbol.asyncIterator],
+    ReadableStream.prototype.values,
+    "@@asyncIterator and values should be the same function object",
+  );
+  assert.strictEqual(ReadableStream.prototype.values.name, "values");
+});
+
+test("polyfill mirrors an existing values() method instead of replacing it", async () => {
+  const result = await polyfillWithExistingValues();
+
+  assert.isTrue(result.valuesIsNative);
+  assert.isTrue(result.asyncIteratorIsNative);
+  assert.isFalse(result.asyncIteratorDescriptor.enumerable);
+  assert.isTrue(result.asyncIteratorDescriptor.writable);
+  assert.isTrue(result.asyncIteratorDescriptor.configurable);
+});
+
+test("polyfill mirrors an existing @@asyncIterator method as values()", async () => {
+  const result = await polyfillWithExistingAsyncIterator();
+
+  assert.isTrue(result.valuesIsNative);
+  assert.isTrue(result.asyncIteratorIsNative);
+  assert.isTrue(result.valuesDescriptor.enumerable);
+  assert.isTrue(result.valuesDescriptor.writable);
+  assert.isTrue(result.valuesDescriptor.configurable);
+});
+
+test("ponyfill asyncIterator has the same runtime iterator shape as the polyfill", async () => {
+  const s = new ReadableStream({
+    start(c) {
+      c.enqueue("chunk");
+      c.close();
+    },
+  });
+  const it = asyncIterator(s);
+
+  assert.strictEqual(
+    Object.getPrototypeOf(Object.getPrototypeOf(it)),
+    AsyncIterablePrototype,
+  );
+  assert.strictEqual(it[Symbol.asyncIterator](), it);
+  assert.deepEqual(await it.next(), { done: false, value: "chunk" });
+  assert.deepEqual(await it.next(), { done: true, value: undefined });
+});
 
 test("Async iterator instances should have the correct list of properties", async () => {
   const s = new ReadableStream();
