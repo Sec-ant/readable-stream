@@ -2,8 +2,12 @@ import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  server: {
+    host: "127.0.0.1",
+  },
   build: {
     target: "ESNext",
+    minify: false,
     lib: {
       entry: {
         "ponyfill/asyncIterator": "src/ponyfill/asyncIterator.ts",
@@ -29,6 +33,9 @@ export default defineConfig({
     },
   },
   test: {
+    api: {
+      host: "127.0.0.1",
+    },
     browser: {
       enabled: true,
       headless: true,
@@ -45,6 +52,7 @@ export default defineConfig({
     },
     coverage: {
       provider: "istanbul",
+      exclude: ["tests/**"],
     },
   },
 });
