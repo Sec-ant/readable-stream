@@ -600,6 +600,7 @@ test("fromAnyIterable: reader.cancel() inside next()", async () => {
     },
     async return() {
       returnCalls++;
+      return { done: true };
     },
     [Symbol.asyncIterator]: () => iterable,
   };
@@ -693,6 +694,15 @@ test("fromAnyIterable: polyfill", async () => {
       from: typeof fromAnyIterable;
     }
   >(ReadableStream);
+  const from = ReadableStream.from;
+  assert.strictEqual(from.name, "from");
+  assert.throws(() => Reflect.construct(from, [array]), TypeError);
+  for (const value of [undefined, null, "ab", 1, true, Symbol()]) {
+    assert.throws(
+      () => Reflect.apply(from, ReadableStream, [value]),
+      TypeError,
+    );
+  }
   const rs = ReadableStream.from(array);
   assert.strictEqual(
     rs.constructor,

@@ -7,4 +7,16 @@ type AugmentedReadableStreamConstructor<R = unknown> =
     from?: typeof fromAnyIterable<R>;
   };
 
-(ReadableStream as AugmentedReadableStreamConstructor).from ??= fromAnyIterable;
+const { from } = {
+  from(iterable: Iterable<unknown> | AsyncIterable<unknown>) {
+    if (
+      iterable === null ||
+      (typeof iterable !== "object" && typeof iterable !== "function")
+    ) {
+      throw new TypeError("ReadableStream.from requires an iterable object.");
+    }
+    return fromAnyIterable(iterable);
+  },
+};
+
+(ReadableStream as AugmentedReadableStreamConstructor).from ??= from;

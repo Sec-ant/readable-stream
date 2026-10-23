@@ -18,109 +18,98 @@ class ReadableStreamAsyncIterableIteratorImpl<R>
   #reader: ReadableStreamDefaultReader<R>;
   #preventCancel: boolean;
   #isFinished = false;
-  #ongoingPromise: Promise<ReadableStreamReadResult<R>> | undefined = undefined;
+  #ongoingPromise: Promise<unknown> | undefined;
+  #pendingOperations = 0;
   constructor(reader: ReadableStreamDefaultReader<R>, preventCancel: boolean) {
     this.#reader = reader;
     this.#preventCancel = preventCancel;
   }
   next() {
-    const nextSteps = () => this.#nextSteps();
-    this.#ongoingPromise = this.#ongoingPromise
-      ? this.#ongoingPromise.then(nextSteps, nextSteps)
-      : nextSteps();
-    return this.#ongoingPromise as Promise<IteratorResult<R, undefined>>;
+    return this.#enqueue(this.#nextSteps) as Promise<
+      IteratorResult<R, undefined>
+    >;
   }
   return(value?: unknown) {
-    const returnSteps = () => this.#returnSteps(value);
-    return (
-      this.#ongoingPromise
-        ? this.#ongoingPromise.then(returnSteps, returnSteps)
-        : returnSteps()
-    ) as Promise<IteratorReturnResult<unknown>>;
+    return this.#enqueue(() => this.#returnSteps(value));
   }
-  async #nextSteps(): Promise<ReadableStreamReadResult<R>> {
+  #enqueue<T>(steps: () => Promise<T>): Promise<T> {
+    this.#pendingOperations++;
+    const promise = this.#ongoingPromise
+      ? this.#ongoingPromise.then(steps, steps)
+      : steps();
+    // Finished iterators and preventCancel returns can finish synchronously.
+    if (this.#pendingOperations > 0) {
+      this.#ongoingPromise = promise;
+    }
+    return promise;
+  }
+  #finishOperation() {
+    if (--this.#pendingOperations === 0) {
+      this.#ongoingPromise = undefined;
+    }
+  }
+  #onRead = (result: ReadableStreamReadResult<R>) => {
+    if (result.done) {
+      this.#isFinished = true;
+      this.#reader.releaseLock();
+    }
+    this.#finishOperation();
+    return result;
+  };
+  #onError = (error: unknown): never => {
+    this.#isFinished = true;
+    this.#reader.releaseLock();
+    this.#finishOperation();
+    throw error;
+  };
+  #nextSteps = (): Promise<ReadableStreamReadResult<R>> => {
     if (this.#isFinished) {
-      return {
-        done: true,
-        value: undefined,
-      };
+      this.#finishOperation();
+      return Promise.resolve({ done: true, value: undefined });
     }
-    let readResult: ReadableStreamReadResult<R>;
-    try {
-      readResult = await this.#reader.read();
-    } catch (e) {
-      this.#ongoingPromise = undefined;
-      this.#isFinished = true;
-      this.#reader.releaseLock();
-      throw e;
-    }
-    if (readResult.done) {
-      this.#ongoingPromise = undefined;
-      this.#isFinished = true;
-      this.#reader.releaseLock();
-    }
-    return readResult;
-  }
+    return this.#reader.read().then(this.#onRead, this.#onError);
+  };
   async #returnSteps(
     value?: unknown,
   ): Promise<ReadableStreamReadDoneResult<unknown>> {
-    if (this.#isFinished) {
-      return {
-        done: true,
-        value,
-      };
-    }
-    this.#isFinished = true;
-    if (!this.#preventCancel) {
-      const result = this.#reader.cancel(value);
+    if (!this.#isFinished) {
+      this.#isFinished = true;
+      const result = this.#preventCancel
+        ? undefined
+        : this.#reader.cancel(value);
       this.#reader.releaseLock();
-      await result;
-      return {
-        done: true,
-        value,
-      };
+      if (result) {
+        try {
+          await result;
+        } catch (error) {
+          this.#finishOperation();
+          throw error;
+        }
+      }
     }
-    this.#reader.releaseLock();
-    return {
-      done: true,
-      value,
-    };
+    this.#finishOperation();
+    return { done: true, value };
   }
 }
 
-const implementSymbol = Symbol();
+const implementations = new WeakMap<
+  object,
+  ReadableStreamAsyncIterableIteratorImpl<unknown>
+>();
 
-interface InternalReadableStreamAsyncIterableIterator<R>
-  extends ReadableStreamAsyncIterator<R> {
-  [implementSymbol]: ReadableStreamAsyncIterableIteratorImpl<R>;
+function invalidIterator() {
+  return Promise.reject(
+    new TypeError("Invalid ReadableStream async iterator."),
+  );
 }
 
-function _next<R>(this: InternalReadableStreamAsyncIterableIterator<R>) {
-  return this[implementSymbol].next();
-}
-Object.defineProperty(_next, "name", { value: "next" });
-
-function _return<R>(
-  this: InternalReadableStreamAsyncIterableIterator<R>,
-  returnValue?: unknown,
-) {
-  return this[implementSymbol].return(returnValue);
-}
-Object.defineProperty(_return, "name", { value: "return" });
-
-const readableStreamAsyncIterableIteratorPrototype: InternalReadableStreamAsyncIterableIterator<unknown> =
-  Object.create(AsyncIterablePrototype, {
-    next: {
-      enumerable: true,
-      configurable: true,
-      writable: true,
-      value: _next,
+const readableStreamAsyncIterableIteratorPrototype: ReadableStreamAsyncIterator<unknown> =
+  Object.assign(Object.create(AsyncIterablePrototype), {
+    next(this: ReadableStreamAsyncIterator<unknown>) {
+      return implementations.get(this)?.next() ?? invalidIterator();
     },
-    return: {
-      enumerable: true,
-      configurable: true,
-      writable: true,
-      value: _return,
+    return(this: ReadableStreamAsyncIterator<unknown>, value?: unknown) {
+      return implementations.get(this)?.return(value) ?? invalidIterator();
     },
   });
 
@@ -136,15 +125,26 @@ export interface ReadableStreamIteratorOptions {
  */
 export function asyncIterator<R>(
   readableStream: ReadableStream<R>,
-  { preventCancel = false }: ReadableStreamIteratorOptions = {},
+  options: ReadableStreamIteratorOptions | null = {},
 ): ReadableStreamAsyncIterator<R> {
+  if (
+    options !== null &&
+    typeof options !== "object" &&
+    typeof options !== "function"
+  ) {
+    throw new TypeError("Iterator options must be an object.");
+  }
+  const preventCancel = Boolean(options?.preventCancel);
   const reader = readableStream.getReader();
   const implement = new ReadableStreamAsyncIterableIteratorImpl<R>(
     reader,
     preventCancel,
   );
-  const readableStreamAsyncIterableIterator: InternalReadableStreamAsyncIterableIterator<R> =
+  const readableStreamAsyncIterableIterator: ReadableStreamAsyncIterator<R> =
     Object.create(readableStreamAsyncIterableIteratorPrototype);
-  readableStreamAsyncIterableIterator[implementSymbol] = implement;
+  implementations.set(
+    readableStreamAsyncIterableIterator,
+    implement as ReadableStreamAsyncIterableIteratorImpl<unknown>,
+  );
   return readableStreamAsyncIterableIterator;
 }
