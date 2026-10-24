@@ -1,3 +1,5 @@
 allowBuilds:
   simple-git-hooks: true
 dedupePeers: true
+# Keep the project lockfile readable by GitHub's dependency graph.
+pmOnFail: ignore
