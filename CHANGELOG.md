@@ -1,5 +1,18 @@
 # @sec-ant/readable-stream
 
+## 0.7.1
+
+### Patch Changes
+
+- 78b0c47: Match the native `ReadableStream.from` method shape and require iterable objects. The standalone `fromAnyIterable` helper accepts strings.
+- 78b0c47: Forward cancellation to synchronous iterators before the first read and while a yielded promise is pending. Validate and await cleanup results without awaiting the cancellation reason.
+- 78b0c47: Fix iterable conversion to validate iterator results, capture `next` once, and read `done` before `value`.
+- 78b0c47: Infer unwrapped stream values for synchronous iterables while preserving promise values from asynchronous iterables.
+- 78b0c47: Accept `null` as default async iterator options and reject primitive options before acquiring a stream reader.
+- 78b0c47: Serialize `next()` and `return()` through stream cancellation. Reuse reader callbacks to reduce promise allocations and release consumed chunks after operations settle.
+- 78b0c47: Include async iteration type declarations when importing the polyfill from the published package.
+- 78b0c47: Return rejected promises when async iterator `next()` or `return()` is called with an incompatible receiver, including inherited and proxied iterators.
+
 ## 0.7.0
 
 ### Minor Changes
