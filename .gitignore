@@ -30,3 +30,6 @@ coverage
 *.tgz
 *.tar.gz
 __screenshots__
+
+.vitest
+*.tsbuildinfo

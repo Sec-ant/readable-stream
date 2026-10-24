@@ -1,4 +1,4 @@
-/// <reference types="../types/async-iterator.d.ts" />
+/// <reference types="../types/async-iterator.d.ts" preserve="true" />
 
 import { asyncIterator } from "../core/asyncIterator.js";
 

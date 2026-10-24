@@ -24,7 +24,7 @@ export default defineConfig({
       fileName: (_, entryName) => `${entryName}.js`,
     },
     outDir: "dist",
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         preserveModules: true,
         preserveModulesRoot: "src",
@@ -33,6 +33,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ["tests/**/*.spec.ts"],
     api: {
       host: "127.0.0.1",
     },
@@ -42,17 +43,23 @@ export default defineConfig({
       provider: playwright(),
       instances: [
         {
+          name: "chromium",
           browser: "chromium",
         },
         {
+          name: "firefox",
           browser: "firefox",
+        },
+        {
+          name: "webkit",
+          browser: "webkit",
         },
       ],
       screenshotFailures: false,
     },
     coverage: {
       provider: "istanbul",
-      exclude: ["tests/**"],
+      include: ["src/**"],
     },
   },
 });
