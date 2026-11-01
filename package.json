@@ -111,7 +111,7 @@
     "test:wpt": "pnpm -s build && node compatibility/prepare.mjs && vitest run --config vitest.tools.config.mjs --project=wpt"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
+    "@biomejs/biome": "2.6.4",
     "@changesets/cli": "^3.0.3",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
