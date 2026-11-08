@@ -117,7 +117,7 @@
     "@commitlint/config-conventional": "^21.2.4",
     "@types/node": "^24.19.2",
     "@vitest/browser": "^5.0.5",
-    "@vitest/browser-playwright": "5.0.5",
+    "@vitest/browser-playwright": "5.1.0",
     "@vitest/coverage-istanbul": "^5.0.5",
     "@vitest/ui": "^5.0.5",
     "concurrently": "^10.0.6",
